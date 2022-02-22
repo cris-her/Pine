@@ -1,0 +1,32 @@
+//@version=4
+study("Mi script", overlay=true)
+// [h, l, o, c, v, p] = security(syminfo.tickerid, timeframe.period, [high, low, open, close, volume, hlc3]) // timeframe.period vs "60", "D"
+// plot(h, color=color.yellow, linewidth=1)
+// plot(l, color=color.yellow, linewidth=1)
+// plot(c, color=color.yellow, linewidth=1)
+
+// mi_funcion() => max(high-low, abs(high-close[1]), abs(low-close[1])) // true range
+// mm = sma(mi_funcion(), 14) // puntero
+// security fuera de bloque locales, tampoco plot dentro de if
+// precio = security(syminfo.tickerid, timeframe.period, mm) // tr
+// plot(close > open ? precio : na, color=color.yellow, linewidth=1)
+
+r = sma(close, 5)
+l = sma(close, 20)
+
+gr = plot(r, color=color.yellow, title="Media rapida", transp=100)
+gl = plot(l, color=color.blue, title="Media lenta", transp=100)
+
+fill(gr, gl, r>l ? color.green : color.red, title="Fondo entre media moviles")
+barcolor(r > l ? color.green : color.red, title="Colores de las velas")
+
+cp = valuewhen(crossover(r,l), close, 0)
+cn = valuewhen(crossover(l,r), close, 0)
+plot(cp, color=color.green, style=plot.style_circles)
+plot(cn, color=color.red, style=plot.style_circles)
+
+//overlay=false
+//cb=lowestbars(low, 20)
+//precio = low[abs(cb)]
+//plot(precio)
+//plot(lowest(20), color=color.yellow)

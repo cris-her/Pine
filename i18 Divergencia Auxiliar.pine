@@ -1,0 +1,12 @@
+//@version=4
+study("Divergencia_Auxiliar")
+long = input(50, title="Longitud EMA")
+
+ema = ema(close, long)
+dist = abs(close - ema)
+porcentaje = dist * 100 / close
+
+mm_dist = ema(porcentaje, 21)
+
+plot(porcentaje, style=plot.style_columns)
+plot(mm_dist, color=color.yellow)

@@ -1,0 +1,14 @@
+D:\Dropbox\ProgramandoEnLosMercados\Binance\PruebaBinance\bin\Debug\PruebaBinance.exe.config
+D:\Dropbox\ProgramandoEnLosMercados\Binance\PruebaBinance\bin\Debug\PruebaBinance.exe
+D:\Dropbox\ProgramandoEnLosMercados\Binance\PruebaBinance\bin\Debug\PruebaBinance.pdb
+D:\BIN\Binance\Videos\PruebaBinance.exe.config
+D:\BIN\Binance\Videos\PruebaBinance.exe
+D:\BIN\Binance\Videos\PruebaBinance.pdb
+D:\Dropbox\ProgramandoEnLosMercados\Binance\PruebaBinance\obj\Debug\PruebaBinance.csprojAssemblyReference.cache
+D:\Dropbox\ProgramandoEnLosMercados\Binance\PruebaBinance\obj\Debug\PruebaBinance.Form1.resources
+D:\Dropbox\ProgramandoEnLosMercados\Binance\PruebaBinance\obj\Debug\PruebaBinance.Properties.Resources.resources
+D:\Dropbox\ProgramandoEnLosMercados\Binance\PruebaBinance\obj\Debug\PruebaBinance.csproj.GenerateResource.cache
+D:\Dropbox\ProgramandoEnLosMercados\Binance\PruebaBinance\obj\Debug\PruebaBinance.csproj.CoreCompileInputs.cache
+D:\Dropbox\ProgramandoEnLosMercados\Binance\PruebaBinance\obj\Debug\PruebaBinance.csproj.CopyComplete
+D:\Dropbox\ProgramandoEnLosMercados\Binance\PruebaBinance\obj\Debug\PruebaBinance.exe
+D:\Dropbox\ProgramandoEnLosMercados\Binance\PruebaBinance\obj\Debug\PruebaBinance.pdb

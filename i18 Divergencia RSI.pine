@@ -1,0 +1,138 @@
+//version 2021/02/08 12:00 // descarte divergencias cuando x1 y x2 son demasiado pequeños
+//Se corrigió el bug cuando aparecía una nueva vela // angulo divergencia fuerte o debil
+//Se almacenan todas las lineas para luego poder eliminarla en una nueva vela	
+
+
+//@version=4
+study("Divergencia_RSI", overlay= false, max_bars_back=1000 )
+long = input(50,  title= "Longitud EMA")
+
+// arrays para mantener los puntos maximos y los puntos minimos
+var activo_puntos_maximos_x = array.new_int()
+var activo_puntos_maximos_y = array.new_float()
+var activo_puntos_minimos_x = array.new_int()
+var activo_puntos_minimos_y = array.new_float()
+var rsi_puntos_maximos_y = array.new_float()
+var rsi_puntos_minimos_y = array.new_float()
+
+// manejo de lineas
+var lineas = array.new_line()
+borrar_lineas() =>
+    c = array.size(lineas)
+    if c > 0 
+        for r = 0 to c -1
+            line.delete(array.get(lineas,r) )
+        array.clear(lineas)
+
+// calculos de la ema y la distancia al precio
+ema = ema(close, long)
+dist = abs(close - ema)
+porcentaje = dist * 100 / close
+mm_porcentaje = ema(porcentaje, 21 )
+
+// calculo del RSI
+rsi = rsi(close, 14)
+
+// definicion de las variables para llevar los minimos y maximos de cada zona
+activo_ultimo_maximo_x = 0
+activo_ultimo_maximo_y = 0.0
+rsi_ultimo_maximo_y    = 0.0
+
+activo_ultimo_minimo_x = 0
+activo_ultimo_minimo_y = 99999999999999.9
+rsi_ultimo_minimo_y    = 0.0
+
+// Inicializamos las variables para ver si hay que buscar maximos o minimos
+buscando_maximos = ema  > ema[1]  and close > ema
+buscando_minimos = ema  < ema[1]  and close < ema
+
+
+// procesamos en la última vela
+if barstate.islast
+    array.clear(activo_puntos_maximos_x)
+    array.clear(activo_puntos_maximos_y)
+    array.clear(activo_puntos_minimos_x)
+    array.clear(activo_puntos_minimos_y)
+    array.clear(rsi_puntos_maximos_y)
+    array.clear(rsi_puntos_minimos_y)
+    for pos = 0 to 900
+        if buscando_maximos         //si tenemos que buscar maximos
+            if close[pos] > ema[pos] and porcentaje[pos] > mm_porcentaje[pos]
+                if close[pos] > activo_ultimo_maximo_y      // si encontramos un nuevo maximo
+                    activo_ultimo_maximo_y := close[pos]    // almacenamos el nueov maximo
+                    activo_ultimo_maximo_x := time[pos]
+                    rsi_ultimo_maximo_y    := rsi[pos]
+
+            if ema[pos] < ema[pos +1] and close[pos] < ema[pos]     // si debemos comenzar a buscar mimnimos
+                if activo_ultimo_maximo_x > 0
+                    // guardamos el punto actual  (es un maximo)
+                    array.push(activo_puntos_maximos_x, activo_ultimo_maximo_x)
+                    array.push(activo_puntos_maximos_y, activo_ultimo_maximo_y)
+                    array.push(rsi_puntos_maximos_y, rsi_ultimo_maximo_y)
+                
+                // inicializamos las variables para la proxima vez que tengamos que buscar un maximo
+                activo_ultimo_maximo_x := 0
+                activo_ultimo_maximo_y := 0.0
+                rsi_ultimo_maximo_y    := 0.0
+                
+                // inidicamos que desde ahora vamos a buscar minimos
+                buscando_maximos := false
+                buscando_minimos := true
+                    
+        if buscando_minimos     //si tenemos que buscar minimos
+            if close[pos] < ema[pos] and porcentaje[pos] > mm_porcentaje[pos]  // si todavía debemos buscar minimos
+                if close[pos] < activo_ultimo_minimo_y    // si encontramos un nuevo minimo
+                    // almacenamos los datos del nuevo minimo        
+                    activo_ultimo_minimo_y := close[pos]  
+                    activo_ultimo_minimo_x := time[pos]
+                    rsi_ultimo_minimo_y    := rsi[pos]
+                    
+            if ema[pos] > ema[pos +1] and close[pos] > ema[pos]     // ya debemos comenzar a buscar maximos 
+                if activo_ultimo_minimo_x > 0                       // si habiamos encontrado un minimo
+                    // agregamos el minimo al array de puntos minimos
+                    array.push(activo_puntos_minimos_x, activo_ultimo_minimo_x)
+                    array.push(activo_puntos_minimos_y, activo_ultimo_minimo_y)
+                    array.push(rsi_puntos_minimos_y, rsi_ultimo_minimo_y)
+                
+                // inicializamos las variables para la proxima vez que tengamos que bucar un minimo
+                activo_ultimo_minimo_x := 0
+                activo_ultimo_minimo_y := 99999999999999.9
+                rsi_ultimo_minimo_y    := 99999999999999.9
+                
+                // indicamos que desde ahora vamos a buscar maximos
+                buscando_maximos := true
+                buscando_minimos := false        
+        
+    // recorremos todos los puntos maximos para poder unirlos con lineas (si es que cumplen la condición de divergencia)        
+    for r = 0 to array.size(activo_puntos_maximos_x) - 2
+        ax1 = array.get(activo_puntos_maximos_x, r )
+        ay1 = array.get(activo_puntos_maximos_y, r )
+        ax2 = array.get(activo_puntos_maximos_x, r+1 )
+        ay2 = array.get(activo_puntos_maximos_y, r+1 )
+        
+        ry1 = array.get(rsi_puntos_maximos_y, r )
+        ry2 = array.get(rsi_puntos_maximos_y, r+1 )
+
+        l = line.new(ax1, ry1, ax2, ry2, xloc=xloc.bar_time, color =  (ay1  > ay2 and ry1 < ry2) ?  color.red : na   ,width = 3  )
+        array.push(lineas,l)
+
+    // recorremos todos los puntos minimos para poder unirlos con lineas (si es que cumplen la condición de divergencia)        
+    for r = 0 to array.size(activo_puntos_minimos_x) - 2
+        ax1 = array.get(activo_puntos_minimos_x, r )
+        ay1 = array.get(activo_puntos_minimos_y, r )
+        ax2 = array.get(activo_puntos_minimos_x, r+1 )
+        ay2 = array.get(activo_puntos_minimos_y, r+1 )
+        
+        ry1 = array.get(rsi_puntos_minimos_y, r )
+        ry2 = array.get(rsi_puntos_minimos_y, r+1 )
+        
+        l = line.new(ax1, ry1, ax2, ry2, xloc=xloc.bar_time, color =  (ay1  < ay2 and ry1 > ry2) ?  color.red : na   ,width = 3   )
+        array.push(lineas,l)  
+                
+        
+//---------logica de graficar el RSI---------------------------
+l1 = hline(70, color=color.white, linestyle=hline.style_dashed)
+l2 = hline(30, color=color.white, linestyle=hline.style_dashed)
+fill(l1, l2, color= color.purple)
+plot(rsi, color=color.purple)
+//-------------------------------------------------------------

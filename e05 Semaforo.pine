@@ -1,0 +1,51 @@
+//@version=4
+// strategy("Mi estrategia", overlay=true)
+// longCondition = crossover(sma(close,14), sma(close,28))
+// if (longCondition)
+//     strategy.entry("My Long Entry Id", strategy.long)
+// shortCondition = crossunder(sma(close,14), sma(close,28))
+// if (shortCondition)
+//     strategy.entry("My Short Entry Id", strategy.short)
+
+strategy("Mi Semaforo", overlay=true)
+longitud_mm_v = input(5, title="Longitud media movil Verde")
+longitud_mm_a = input(10, title="Longitud media movil Amarilla")
+longitud_mm_r = input(20, title="Longitud media movil Roja")
+pintar_mm = input(false, title="Pintar medias moviles")
+
+// desde
+desde_a = input(2000, title="Desde Año")
+desde_m = input(1, title="Desde Mes", minval=1, maxval=12)
+desde_d = input(1, title="Desde Dia", minval=1, maxval=31)
+// hasta
+hasta_a = input(2030, title="Hasta Año")
+hasta_m = input(1, title="Hasta Mes", minval=1, maxval=12)
+hasta_d = input(1, title="Hasta Dia", minval=1, maxval=31)
+
+FechaValida() =>
+    desde = time >= timestamp(syminfo.timezone, desde_a, desde_m, desde_d, 0, 0)
+    hasta = time <= timestamp(syminfo.timezone, hasta_a, hasta_m, hasta_d, 0, 0)
+    desde and hasta
+
+mm_v = sma(close, longitud_mm_v)
+mm_a = sma(close, longitud_mm_a)
+mm_r = sma(close, longitud_mm_r)
+alcista = (mm_v > mm_a) and (mm_a > mm_r)
+comprado = strategy.position_size > 0
+
+if ( not comprado and alcista and FechaValida() )
+    // realizar compra
+    cantidad = round(strategy.equity / close)
+    strategy.entry("Compra", strategy.long, cantidad)
+
+if ( comprado and not alcista )
+    // realizar venta
+    strategy.close("Compra", comment="Venta")
+if ( comprado and not FechaValida() )
+    // realizar venta x finalizacion periodo
+    strategy.close("Compra", comment="Venta x fin")
+
+plot(pintar_mm ? mm_v : na, color=color.green)
+plot(pintar_mm ? mm_a : na, color=color.yellow)
+plot(pintar_mm ? mm_r : na, color=color.red)
+// filtrar segun el angulo de la mm_r

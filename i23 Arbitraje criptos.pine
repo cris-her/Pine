@@ -1,0 +1,223 @@
+//-------------------------------------
+//
+//   H     H    OOOOO    K     K
+//   H     H   O     O   K    K
+//   H     H   O     O   K  K
+//   HHHHHHH   O     O   KkK
+//   H     H   O     O   K  K
+//   H     H   O     O   K    K
+//   H     H    OOOOO    K      K
+//
+// --------------------------------------
+// Arbitrador de pares de criptomonedas
+// --------------------------------------
+
+//@version=4
+study("Arbitrando Criptos") // venta debajo de punto cero se pierde contra USDT, analizar contra pares de BTC
+
+//---------------------- entrada de datos ------------------------------------------------------------------------------------------
+fecha  = input ( defval =  timestamp("23 Apr 2021 11:15 -0300" ), title ="Fecha Operación", type=input.time ) // UTC-3
+
+moneda_1_visible    = input(group="Cripto contra USDT", inline = "linea 1", type=input.bool, title="1:", defval = true)
+moneda_1_simbolo    = input(group="Cripto contra USDT", inline = "linea 1", type=input.symbol, title="", defval = "BINANCE:BTCUSDT")
+moneda_1_color      = input(group="Cripto contra USDT", inline = "linea 1", type=input.color, title="", defval = color.blue)
+moneda_1_comprado   = input(group="Cripto contra USDT", inline = "linea 1", type=input.bool, title="comprado", defval = false)
+
+moneda_2_visible    = input(group="Cripto contra USDT", inline = "linea 2", type=input.bool, title="2:", defval = true)
+moneda_2_simbolo    = input(group="Cripto contra USDT", inline = "linea 2", type=input.symbol, title="", defval = "BINANCE:DOTUSDT")
+moneda_2_color      = input(group="Cripto contra USDT", inline = "linea 2", type=input.color, title="", defval = color.red)
+moneda_2_comprado   = input(group="Cripto contra USDT", inline = "linea 2", type=input.bool, title="comprado", defval = false)
+
+moneda_3_visible    = input(group="Cripto contra USDT", inline = "linea 3", type=input.bool, title="3:", defval = true)
+moneda_3_simbolo    = input(group="Cripto contra USDT", inline = "linea 3", type=input.symbol, title="", defval = "BINANCE:LTCUSDT")
+moneda_3_color      = input(group="Cripto contra USDT", inline = "linea 3", type=input.color, title="", defval = color.orange)
+moneda_3_comprado   = input(group="Cripto contra USDT", inline = "linea 3", type=input.bool, title="comprado", defval = false)
+
+moneda_4_visible    = input(group="Cripto contra USDT", inline = "linea 4", type=input.bool, title="4:", defval = true)
+moneda_4_simbolo    = input(group="Cripto contra USDT", inline = "linea 4", type=input.symbol, title="", defval = "BINANCE:XRPUSDT")
+moneda_4_color      = input(group="Cripto contra USDT", inline = "linea 4", type=input.color, title="", defval = color.gray)
+moneda_4_comprado   = input(group="Cripto contra USDT", inline = "linea 4", type=input.bool, title="comprado", defval = false)
+
+moneda_5_visible    = input(group="Cripto contra USDT", inline = "linea 5", type=input.bool, title="5:", defval = true)
+moneda_5_simbolo    = input(group="Cripto contra USDT", inline = "linea 5", type=input.symbol, title="", defval = "BINANCE:VETUSDT")
+moneda_5_color      = input(group="Cripto contra USDT", inline = "linea 5", type=input.color, title="", defval = color.teal)
+moneda_5_comprado   = input(group="Cripto contra USDT", inline = "linea 5", type=input.bool, title="comprado", defval = false)
+
+moneda_6_visible    = input(group="Cripto contra USDT", inline = "linea 6", type=input.bool, title="6:", defval = true)
+moneda_6_simbolo    = input(group="Cripto contra USDT", inline = "linea 6", type=input.symbol, title="", defval = "BINANCE:ETHUSDT")
+moneda_6_color      = input(group="Cripto contra USDT", inline = "linea 6", type=input.color, title="", defval = color.maroon)
+moneda_6_comprado   = input(group="Cripto contra USDT", inline = "linea 6", type=input.bool, title="comprado", defval = false)
+
+moneda_7_visible    = input(group="Cripto contra USDT", inline = "linea 7", type=input.bool, title="7:", defval = true)
+moneda_7_simbolo    = input(group="Cripto contra USDT", inline = "linea 7", type=input.symbol, title="", defval = "BINANCE:ADAUSDT")
+moneda_7_color      = input(group="Cripto contra USDT", inline = "linea 7", type=input.color, title="", defval = color.purple)
+moneda_7_comprado   = input(group="Cripto contra USDT", inline = "linea 7", type=input.bool, title="comprado", defval = false)
+
+moneda_8_visible    = input(group="Cripto contra USDT", inline = "linea 8", type=input.bool, title="8:", defval = true)
+moneda_8_simbolo    = input(group="Cripto contra USDT", inline = "linea 8", type=input.symbol, title="", defval = "BINANCE:CAKEUSDT")
+moneda_8_color      = input(group="Cripto contra USDT", inline = "linea 8", type=input.color, title="", defval = color.new(color.blue,0))
+moneda_8_comprado   = input(group="Cripto contra USDT", inline = "linea 8", type=input.bool, title="comprado", defval = false)
+
+moneda_9_visible    = input(group="Cripto contra USDT", inline = "linea 9", type=input.bool, title="9:", defval = true)
+moneda_9_simbolo    = input(group="Cripto contra USDT", inline = "linea 9", type=input.symbol, title="", defval = "BINANCE:BNBUSDT")
+moneda_9_color      = input(group="Cripto contra USDT", inline = "linea 9", type=input.color, title="", defval = color.olive)
+moneda_9_comprado   = input(group="Cripto contra USDT", inline = "linea 9", type=input.bool, title="comprado", defval = false)
+
+// -------- DEFINICION DE LOS ARRAYS PARA MANTENER LOS DATOS DE CADA PAR DE CRIPTOMONEDA ---------------
+var visibles = array.new_bool(10)
+var simbolos = array.new_string(10)
+var colores  = array.new_color()
+var comprado = array.new_bool(10)
+
+var inicial   = array.new_float(10)
+var actual    = array.new_float(10)
+var variacion = array.new_float(10)
+
+var labels    = array.new_label()
+
+
+//  COLOR UTILIZADO PARA DESAPARECER LA ETIQUETAS
+colorTranspararente  = color.new( color.red, 100 )
+
+
+if array.size(colores) == 0
+    // se va a ejecutar una sola vez y es en la primera vela
+    array.push(colores, color.green)
+    array.push(colores, moneda_1_color)
+    array.push(colores, moneda_2_color)
+    array.push(colores, moneda_3_color)
+    array.push(colores, moneda_4_color)
+    array.push(colores, moneda_5_color)
+    array.push(colores, moneda_6_color)
+    array.push(colores, moneda_7_color)
+    array.push(colores, moneda_8_color)
+    array.push(colores, moneda_9_color)
+    
+    array.set(simbolos, 0, "USDT")
+    array.set(simbolos, 1, moneda_1_simbolo)
+    array.set(simbolos, 2, moneda_2_simbolo)
+    array.set(simbolos, 3, moneda_3_simbolo)
+    array.set(simbolos, 4, moneda_4_simbolo)
+    array.set(simbolos, 5, moneda_5_simbolo)
+    array.set(simbolos, 6, moneda_6_simbolo)
+    array.set(simbolos, 7, moneda_7_simbolo)
+    array.set(simbolos, 8, moneda_8_simbolo)
+    array.set(simbolos, 9, moneda_9_simbolo)
+    
+    array.set(visibles, 0, true)
+    array.set(visibles, 1, moneda_1_visible)
+    array.set(visibles, 2, moneda_2_visible)
+    array.set(visibles, 3, moneda_3_visible)
+    array.set(visibles, 4, moneda_4_visible)
+    array.set(visibles, 5, moneda_5_visible)
+    array.set(visibles, 6, moneda_6_visible)
+    array.set(visibles, 7, moneda_7_visible)
+    array.set(visibles, 8, moneda_8_visible)
+    array.set(visibles, 9, moneda_9_visible)
+    
+    array.set(comprado, 0, false)
+    array.set(comprado, 1, moneda_1_comprado)
+    array.set(comprado, 2, moneda_2_comprado)
+    array.set(comprado, 3, moneda_3_comprado)
+    array.set(comprado, 4, moneda_4_comprado)
+    array.set(comprado, 5, moneda_5_comprado)
+    array.set(comprado, 6, moneda_6_comprado)
+    array.set(comprado, 7, moneda_7_comprado)
+    array.set(comprado, 8, moneda_8_comprado)
+    array.set(comprado, 9, moneda_9_comprado)
+   
+    for r = 0 to 9
+        label _e = label.new(time,0.0, xloc=xloc.bar_time,
+          text      = "",
+          color     = not array.get(visibles, r) ? colorTranspararente : array.get(comprado, r) ? color.black : array.get(colores, r ),
+          textcolor = not array.get(visibles, r) ? colorTranspararente :  color.white,
+          size      = array.get(comprado, r) ?size.normal : size.small,
+          style     = label.style_label_left,
+          textalign = text.align_left)
+        array.push(labels, _e)
+        
+
+// ---- TOMAR LOS DATOS DE CADA PAR DE CRIPTOMONEDA ---------
+c1 = security(moneda_1_simbolo, timeframe.period, close)
+c2 = security(moneda_2_simbolo, timeframe.period, close)
+c3 = security(moneda_3_simbolo, timeframe.period, close)
+c4 = security(moneda_4_simbolo, timeframe.period, close)
+c5 = security(moneda_5_simbolo, timeframe.period, close)
+c6 = security(moneda_6_simbolo, timeframe.period, close)
+c7 = security(moneda_7_simbolo, timeframe.period, close)
+c8 = security(moneda_8_simbolo, timeframe.period, close)
+c9 = security(moneda_9_simbolo, timeframe.period, close)
+
+
+// FUNCION PARA DETERMINA SI LA FECHA 1 ES MAYOR O IGUAL QUE LA FECHA 2
+FechaEsMayorOIgual(fecha1, fecha2) =>
+    (fecha1 - fecha2) >= 0
+
+//----------------------- PROCESO PRINCIPAL ---------------------------
+var inicializo = false
+ok = FechaEsMayorOIgual( time, fecha ) and not  inicializo
+bgcolor( ok ? color.yellow : na, transp=20 )
+
+if ok
+    // SI LLEGAMOS A LA FECHA INDICADA POR EL USUARIO INICIALIZAMOS EL ARRAY inicial
+    array.set(inicial, 0, 0.0 )
+    array.set(inicial, 1, c1)
+    array.set(inicial, 2, c2)
+    array.set(inicial, 3, c3)
+    array.set(inicial, 4, c4)
+    array.set(inicial, 5, c5)
+    array.set(inicial, 6, c6)
+    array.set(inicial, 7, c7)
+    array.set(inicial, 8, c8)
+    array.set(inicial, 9, c9)
+
+    inicializo := true
+
+// POR CADA VELA LUEGO DE LA FECHA INDICADA POR EL USUARIO
+if FechaEsMayorOIgual( time, fecha)
+    array.set(actual, 0, 0.0 )
+    array.set(actual, 1, c1)
+    array.set(actual, 2, c2)
+    array.set(actual, 3, c3)
+    array.set(actual, 4, c4)
+    array.set(actual, 5, c5)
+    array.set(actual, 6, c6)
+    array.set(actual, 7, c7)
+    array.set(actual, 8, c8)
+    array.set(actual, 9, c9)  
+    
+    // CALUCAMOS LA VARIACION QUE TUVO CADA UNO DE LOS PARES DE CRIPTOMONEDAS
+    prom  =  0.00
+    for r = 1 to 9
+        v = array.get(actual, r ) * 100 / array.get(inicial, r) -100
+        array.set(variacion , r, v )
+        prom := prom + v
+    
+    // CALCULAMOS EL PROMEDIO PARA ASIGNAR EL VALOR A USDT
+    prom := prom / 9
+    array.set(variacion, 0 , -prom)
+
+// DIBUJAMOS LA GRAFICA DE LA VARIACION DE CADA CRIPOMONEDA
+plot( array.get(visibles,0)? array.get(variacion, 0) : na, color= array.get(comprado,0) ? color.white : array.get(colores,0)  )
+plot( array.get(visibles,1)? array.get(variacion, 1) : na, color= array.get(comprado,1) ? color.white : array.get(colores,1)  )
+plot( array.get(visibles,2)? array.get(variacion, 2) : na, color= array.get(comprado,2) ? color.white : array.get(colores,2)  )
+plot( array.get(visibles,3)? array.get(variacion, 3) : na, color= array.get(comprado,3) ? color.white : array.get(colores,3)  )
+plot( array.get(visibles,4)? array.get(variacion, 4) : na, color= array.get(comprado,4) ? color.white : array.get(colores,4)  )
+plot( array.get(visibles,5)? array.get(variacion, 5) : na, color= array.get(comprado,5) ? color.white : array.get(colores,5)  )
+plot( array.get(visibles,6)? array.get(variacion, 6) : na, color= array.get(comprado,6) ? color.white : array.get(colores,6)  )
+plot( array.get(visibles,7)? array.get(variacion, 7) : na, color= array.get(comprado,7) ? color.white : array.get(colores,7)  )
+plot( array.get(visibles,8)? array.get(variacion, 8) : na, color= array.get(comprado,8) ? color.white : array.get(colores,8)  )
+plot( array.get(visibles,9)? array.get(variacion, 9) : na, color= array.get(comprado,9) ? color.white : array.get(colores,9)  )
+
+
+hline(0, color=color.yellow)
+
+
+// MOVEMOS LA ETIQUETA AL PRECIO SEGÚN LA VARIACION Y TAMBIEN LO POSICIONAMOS AL FINAL DEL GRAFICO, ASIGNAMOS UN TEXTO SGUEN LA VARIACION
+for r = 0 to 9
+    label e = na
+    e := array.get(labels, r)
+    sText = array.get(simbolos, r) + "   Var: " + tostring( array.get(variacion,r), "0.00") + "%"
+    label.set_text(e, sText)    
+    label.set_y(e, array.get(variacion,r))
+    label.set_x(e, time)

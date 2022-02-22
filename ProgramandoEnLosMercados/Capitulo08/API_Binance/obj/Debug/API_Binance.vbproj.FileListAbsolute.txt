@@ -1,0 +1,14 @@
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\bin\Debug\API_Binance.dll
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\bin\Debug\API_Binance.pdb
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\bin\Debug\API_Binance.xml
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\bin\Debug\Newtonsoft.Json.dll
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\bin\Debug\Newtonsoft.Json.pdb
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\bin\Debug\Newtonsoft.Json.xml
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\obj\Debug\API_Binance.Resources.resources
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\obj\Debug\API_Binance.vbproj.GenerateResource.cache
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\obj\Debug\API_Binance.vbproj.CoreCompileInputs.cache
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\obj\Debug\API_Binance.vbproj.CopyComplete
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\obj\Debug\API_Binance.dll
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\obj\Debug\API_Binance.xml
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\obj\Debug\API_Binance.pdb
+D:\Dropbox\ProgramandoEnLosMercados\Binance\API_Binance\obj\Debug\API_Binance.vbprojAssemblyReference.cache

@@ -1,0 +1,44 @@
+//@version=4
+strategy("macd estrategia", overlay=false) // seguir varios activos y entrar en momentos precisos sin tanto riesgo
+sobreCompra = input(1.5, title="sobre compra")
+sobreVenta = input(-1.5, title="sobre venta")
+stopLoss = input(1.5, title="Stop Loss") / 100
+takeProfit = input(3.0, title="Take profit") / 100
+
+[d, mmd, h] = macd(close, 12, 26, 9)
+//mml = ema(close, 12)
+//mmr = ema(close, 26)
+//d = mml - mmr
+//mmd = ema(d, 9)
+//h = d - mmd
+
+sl = 0.00
+tp = 0.00
+
+comprado = strategy.position_size > 0
+vendido = strategy.position_size < 0
+
+if crossunder(d, mmd) and d > sobreCompra
+    if comprado
+        strategy.close("Compra")
+    cantidad = round(strategy.equity / close)
+    sl := close * (1 + stopLoss)
+    tp := close * (1 - takeProfit)
+    strategy.entry("Venta", strategy.short, qty=cantidad, comment="Venta SL:" + tostring(sl, "0.00") + " TP:" + tostring(tp,"0.00") )
+    strategy.exit("Salida", "Venta", stop = sl, limit = tp)
+
+if crossover(d, mmd) and d < sobreVenta
+    if vendido
+        strategy.close("Venta")
+    cantidad = round(strategy.equity / close) // en btc se necesitan decimales
+    sl := close * (1 - stopLoss)
+    tp := close * (1 + takeProfit)
+    strategy.entry("Compra", strategy.long, qty=cantidad, comment="Compra SL:" + tostring(sl, "0.00") + " TP:" + tostring(tp,"0.00") )
+    strategy.exit("Salida", "Compra", stop = sl, limit = tp)
+
+plot(h, style=plot.style_columns, color = h > h[1] ? color.green : color.red, transp=80)
+plot(d, color=color.blue)
+plot(mmd, color=color.orange)
+
+hline(sobreCompra, color=color.red)
+hline(sobreVenta, color=color.red)

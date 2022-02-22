@@ -1,0 +1,72 @@
+//@version=4
+study("Perfil de volumen casero", overlay=true, max_bars_back=1000, max_labels_count = 500)
+
+velas = input(200, title="Cantidad de velas", maxval = 1000)
+filas = input(50, title="Filas", maxval = 500)
+
+var etiquetas = array.new_label(filas)
+var volumen = array.new_float(filas)
+
+
+limpiar_etiquetas() => 
+    cantidad = array.size(etiquetas)
+    if cantidad > 0
+        for r = 0 to cantidad -1
+            label.delete(array.get(etiquetas, r))
+        array.clear(etiquetas)
+
+inicializar_volumen() =>
+    for r = 0 to filas -1
+        array.set(volumen, r, 0.0)
+
+
+
+obtenerMaximo() =>
+    m = 0.0
+    p = 0
+    for r = 0 to filas -1
+        if array.get(volumen, r) > m
+            m := array.get(volumen, r)
+            p := r
+        
+    [p,m]
+
+line linea_maximo = na
+line linea_minimo = na
+
+
+barra = ""
+maximo = highest(velas)
+minimo = lowest(velas)
+
+if barstate.islast
+    limpiar_etiquetas()
+    inicializar_volumen()
+
+    rango = maximo - minimo
+    delta = rango / filas
+    
+    for v = 0 to velas -1
+        valor = close[v] - minimo
+        p = round(valor / delta) -1
+        previo = array.get(volumen, p)
+        array.set(volumen, p, previo + volume[v])
+    
+    [posicion, valorMaximo] = obtenerMaximo()
+    
+    for f = 0 to filas -1
+        cant = round(array.get(volumen, f) * 100/ valorMaximo)
+    
+        eti = label.new(time_close, minimo + delta * f, "", xloc=xloc.bar_time, yloc=yloc.price, color = f == posicion ? color.orange : color.gray, textcolor=color.white, style=label.style_label_left, size=size.auto, tooltip=tostring(cant) + "%")
+        
+        barra := ""
+        for r = 0 to cant * 2
+            barra := barra + "#"
+        label.set_text(eti,barra)
+        array.push(etiquetas, eti)
+        
+    linea_maximo := line.new(bar_index[velas], maximo, bar_index[0], maximo, color=color.yellow, style=line.style_dashed)
+    linea_minimo := line.new(bar_index[velas], minimo, bar_index[0], minimo, color=color.yellow, style=line.style_dashed)
+    
+    line.delete(linea_maximo[1])
+    line.delete(linea_minimo[1])

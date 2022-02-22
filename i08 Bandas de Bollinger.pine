@@ -1,0 +1,49 @@
+//@version=4
+// study("Bandas de Bollinger personalizada", overlay=true)
+// varios_datos() =>
+//     d1 = high - low
+//     d2 = open - close
+//     d3 = avg(d1,d2)
+//     [d1, d2, d3]
+    
+// [dif_hl, dif_oc, prom] = varios_datos() // overlay=false
+// p1 = plot(dif_hl)
+// p2 = plot(dif_oc)
+// fill(p1,p2)
+
+// longitud = input(20, title="Longitud", type=input.integer) // overlay=true
+// mult = input(2.0, title="Multiplicador", type=input.float, step=0.2)
+// fuente = input(close, title="Fuente", type=input.source)
+// [mm, banda_superior, banda_inferior] = bb(fuente, longitud, mult) // sma(close, 20) mm + dev mm - dev // dev = stdev(close, 20) * 2
+// bs = plot(banda_superior, color=color.green)
+// plot(mm, color=color.red)
+// bi = plot(banda_inferior, color=color.green)
+// fill(bs, bi, color=color.green, transp=95)
+// a menor distancia lateraliza
+
+study("Bandas de Bollinger personalizada", overlay=false)
+longitud = input(20, title="Longitud", type=input.integer)
+mult = input(2.0, title="Multiplicador", type=input.float, step=0.2)
+fuente = input(close, title="Fuente", type=input.source)
+tolerancia_superior = input(2.0, title="Tolerancia superior", type=input.float, step=0.1)
+tolerancia_inferior = input(1.0, title="Tolerancia inferior", type=input.float, step=0.1)
+
+entre(valor, inferior, superior) =>
+    valor >= inferior and valor <= superior
+
+[mm, banda_superior, banda_inferior] = bb(fuente, longitud, mult)
+distancia = banda_superior - banda_inferior
+pintar_superior = distancia > tolerancia_superior
+pintar_inferior = distancia < tolerancia_inferior
+
+alcista = high > banda_superior and entre(distancia, tolerancia_inferior, tolerancia_superior)
+bajista = low < banda_inferior and entre(distancia, tolerancia_inferior, tolerancia_superior)
+
+ts = plot(tolerancia_superior, color=color.red)
+ti = plot(tolerancia_inferior, color=color.red)
+d = plot(distancia)
+bgcolor(alcista ? color.green : na, transp=0)
+bgcolor(bajista ? color.red : na, transp=0)
+
+fill(d, ts, color = (pintar_superior ? color.red : na) )
+fill(d, ti, color = (pintar_inferior ? color.red : na) )

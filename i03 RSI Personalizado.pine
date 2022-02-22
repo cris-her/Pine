@@ -1,0 +1,31 @@
+//@version=4
+study("RSI Personalizado")
+// --ENTRADA--
+sobrecompra = input(70, title="Sobre Compra", type=input.integer, minval=50, maxval=100)
+sobreventa = input(30, title="Sobre Venta", type=input.integer, minval=0, maxval=50)
+periodos = input(14, title="Longitud", type=input.integer, minval=1, maxval=400)
+periodos_media = input(14, title="Longitud media movil", type=input.integer, minval=1, maxval=400)
+
+// --PROCESO--
+linea_1 = hline(sobrecompra)
+linea_2 = hline(sobreventa)
+
+up = rma(max(change(close),0), 14)
+down = rma(-min(change(close),0), 14)
+mi_rsi = down == 0 ? 100 : up == 0 ? 0 : 100 - (100/ (1+up / down))
+
+fun_rsi = rsi(close, periodos)
+media = sma(fun_rsi, periodos_media)
+
+EsCompra = crossover(media, sobreventa)
+EsVenta = crossunder(media, sobrecompra)
+
+// --SALIDA--
+bgcolor(EsCompra ? color.green : na, transp=20)
+bgcolor(EsVenta ? color.red : na, transp=20)
+
+fill(linea_1, linea_2, color=color.purple)
+plot(mi_rsi, color=color.purple)
+plot(media, color=color.yellow)
+// plot(na)
+// 75 - 25

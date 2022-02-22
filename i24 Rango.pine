@@ -1,0 +1,69 @@
+//@version=4
+study("IndicadorDeRango", overlay=true) // estrategia - si rompe rango entrada long o short y tendencia cada que precio se acerque a la media
+
+v1 = input(inline="velas", defval=50, title="Velas:")
+v2 = input(inline="velas", defval=100, title="")
+v3 = input(inline="velas", defval=150, title="")
+
+long_mm = input(defval=21, title="MM para tendencia")
+
+var table info = table.new(position.top_right, 4, 4, border_width=3)
+
+formatear(minimo, maximo) =>
+    por = maximo * 100 / minimo - 100
+    tostring(por, "0.00") + "%"
+
+esPositivo(texto) =>
+    aux = str.replace_all(texto, "-", "")
+    str.length(texto) == str.length(aux)
+
+// -----------------------------------
+r1 = formatear(lowest(v1), highest(v1))
+r2 = formatear(lowest(v2), highest(v2))
+r3 = formatear(lowest(v3), highest(v3))
+
+// -----------------------------------
+mm = sma(close, long_mm)
+t1 = mm > mm[v1]
+t2 = mm > mm[v2]
+t3 = mm > mm[v3]
+arriba = "⬆"
+abajo = "⬇"
+
+//plot(mm)
+// -----------------------------------
+mm1 = sma(close,v1)
+mm2 = sma(close,v2)
+mm3 = sma(close,v3)
+
+d1 = formatear(mm1,close)
+d2 = formatear(mm2,close)
+d3 = formatear(mm3,close)
+
+pd1 = esPositivo(d1)
+pd2 = esPositivo(d2)
+pd3 = esPositivo(d3)
+
+if barstate.islast
+    //titulos columnas
+    table.cell(info, 0, 0, "   ", bgcolor=color.new(color.orange, 70), text_color=color.white)
+    table.cell(info, 1, 0, tostring(v1), bgcolor=color.new(color.orange, 70), text_color=color.white)
+    table.cell(info, 2, 0, tostring(v2), bgcolor=color.new(color.orange, 70), text_color=color.white)
+    table.cell(info, 3, 0, tostring(v3), bgcolor=color.new(color.orange, 70), text_color=color.white)
+    
+    //titulos filas
+    table.cell(info, 0, 1, "Rango", bgcolor=color.new(color.orange, 70), text_color=color.white)
+    table.cell(info, 0, 2, "Tendencia", bgcolor=color.new(color.orange, 70), text_color=color.white)
+    table.cell(info, 0, 3, "Distancia", bgcolor=color.new(color.orange, 70), text_color=color.white)
+    
+    table.cell(info, 1, 1, r1, bgcolor=color.new(color.blue, 70), text_color=color.white)
+    table.cell(info, 2, 1, r2, bgcolor=color.new(color.blue, 70), text_color=color.white)
+    table.cell(info, 3, 1, r3, bgcolor=color.new(color.blue, 70), text_color=color.white)
+    
+    table.cell(info, 1, 2, t1 ? arriba : abajo, bgcolor= t1 ? color.new(color.green, 70) : color.new(color.red, 70), text_color=color.white)
+    table.cell(info, 2, 2, t2 ? arriba : abajo, bgcolor= t2 ? color.new(color.green, 70) : color.new(color.red, 70), text_color=color.white)
+    table.cell(info, 3, 2, t3 ? arriba : abajo, bgcolor= t3 ? color.new(color.green, 70) : color.new(color.red, 70), text_color=color.white)
+    
+    table.cell(info, 1, 3, d1, bgcolor= pd1 ? color.new(color.green, 70) : color.new(color.red, 70), text_color=color.white)
+    table.cell(info, 2, 3, d2, bgcolor= pd2 ? color.new(color.green, 70) : color.new(color.red, 70), text_color=color.white)
+    table.cell(info, 3, 3, d3, bgcolor= pd3 ? color.new(color.green, 70) : color.new(color.red, 70), text_color=color.white)

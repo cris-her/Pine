@@ -1,0 +1,11 @@
+//@version=4
+study("RSI del Volumen", overlay=true)
+rsi_v = rsi(volume,14)
+
+// h1 = hline(70) // overlay = false
+// hline(50)
+// h2 = hline(30)
+// fill(h1, h2, color=color.purple)
+// plot(rsi_v, color=color.purple)
+
+bgcolor( rsi_v > 65 ? color.green : na )

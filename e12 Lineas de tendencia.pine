@@ -1,0 +1,176 @@
+//@version=4
+strategy("Lineas de tendencias", overlay = true)
+
+inicio_zona_a = input( defval= 120, title = "Inicio zona A")
+inicio_zona_b = input( defval=  60, title = "Inicio zona B")
+descartar     = input( defval=   4, title = "Descartar para tomar puntos")
+para_canal    = input( defval=   0, title = "Barras para considerar canal" )
+
+stop_loss     = input(0.2, title= "% Stop loss", step = 0.05)
+take_profit   = input(3.91, title= "% Take profit", step = 0.05)
+
+
+var SL = 0.0
+var TP = 0.0
+
+// Funcion que obtiene el valor de la recta en la posicion x, la recta dada por dos puntos
+valor_recta(x, x1,y1,x2,y2) => 
+    ((y1-y2)/(x1-x2)) * (x -x1) + y1
+
+// devuelve el angulo de una recta dada por dos puntos
+Angulo(x1, y1, x2, y2 ) =>
+    -atan( (y2-y1)/(x2-x1) ) * 180 / acos(-1)
+
+// devuelve la x donde se cruzan dos rectas (dada por dos puntos cada recta)    
+Cruce(x1_sup, y1_sup, x2_sup, y2_sup, x1_inf, y1_inf, x2_inf, y2_inf ) =>
+    m_sup = (y2_sup - y1_sup) / (x2_sup - x1_sup)
+    m_inf = (y2_inf - y1_inf) / (x2_inf - x1_inf)
+    ( - m_inf * x1_inf + m_sup * x1_sup - y1_sup + y1_inf ) / (m_sup - m_inf)
+
+
+//a modo de constante para tener el valor más alto
+VALOR_MAXIMO      = 999999999999.9
+
+
+//==========  obtener X e Y del punta A recta superior
+valor_maximo_za   = 0.0
+indice_maximo_za  = 0
+for indice = inicio_zona_b to inicio_zona_a
+    if high[indice] > valor_maximo_za
+        valor_maximo_za   := high[indice] 
+        indice_maximo_za  := indice
+
+//==========  obtener X e Y del punta B recta superior
+valor_maximo_zb   = 0.0
+indice_maximo_zb  = 0
+for indice = descartar to inicio_zona_b
+    if high[indice] > valor_maximo_zb
+        valor_maximo_zb   := high[indice] 
+        indice_maximo_zb  := indice
+        
+
+//==========  obtener X e Y del punta A recta inferior
+valor_minimo_za   = VALOR_MAXIMO
+indice_minimo_za  = 0
+for indice = inicio_zona_b to inicio_zona_a
+    if low[indice] < valor_minimo_za
+        valor_minimo_za   := low[indice] 
+        indice_minimo_za  := indice
+        
+//==========  obtener X e Y del punta B recta inferior
+valor_minimo_zb   = VALOR_MAXIMO
+indice_minimo_zb  = 0
+for indice = descartar to inicio_zona_b
+    if low[indice] < valor_minimo_zb
+        valor_minimo_zb   := low[indice] 
+        indice_minimo_zb  := indice
+
+
+//=========== recalcular la mejor pendiente para la recta superior =============
+sup_p1_x = indice_maximo_za
+sup_p2_x = indice_maximo_zb
+y_maxima_sup = 0.0
+for i = descartar to inicio_zona_a
+    y = valor_recta(i , indice_maximo_za , high[indice_maximo_za]  , indice_maximo_zb , high[indice_maximo_zb]   ) 
+    if high[i] > y and high[i] - y > 0
+        if i > inicio_zona_b
+            sup_p1_x := i
+        else
+            sup_p2_x := i
+        y_maxima_sup     := high[i] - y
+
+y_maxima_sup :=0
+for i = inicio_zona_a to descartar
+    y = valor_recta(i , indice_maximo_za , high[indice_maximo_za]  , indice_maximo_zb , high[indice_maximo_zb]   ) 
+    if high[i] > y and high[i] - y > y_maxima_sup
+        if i > inicio_zona_b
+            sup_p1_x := i
+        else
+            sup_p2_x := i
+        y_maxima_sup     := high[i] - y
+
+
+//=========== recalcular la mejor pendiente para la recta inferir =============
+inf_p1_x = indice_minimo_za
+inf_p2_x = indice_minimo_zb
+y_minima_inf = 0.0
+for i = descartar to inicio_zona_a
+    //y = valor_recta(i , indice_minimo_za , low[indice_minimo_za]  , indice_minimo_zb , low[indice_minimo_zb]   )
+    y = valor_recta(i , inf_p1_x , low[inf_p1_x]  , inf_p2_x , low[inf_p2_x]   ) 
+    if low[i] < y  and y - low[i] > y_minima_inf
+        if i > inicio_zona_b
+            inf_p1_x := i
+        else
+            inf_p2_x := i
+        y_minima_inf := y - low[i]
+y_minima_inf:= 0.0
+for i = inicio_zona_a to descartar
+    //y = valor_recta(i , indice_minimo_za , low[indice_minimo_za]  , indice_minimo_zb , low[indice_minimo_zb]   )
+    y = valor_recta(i , inf_p1_x , low[inf_p1_x]  , inf_p2_x , low[inf_p2_x]   ) 
+    if low[i] < y  and y - low[i] > y_minima_inf
+        if i > inicio_zona_b
+            inf_p1_x := i
+        else
+            inf_p2_x := i
+        //y_minima_inf := y - low[i]
+        y_minima_inf :=0
+
+
+// ====== CALCULOS PRINCIPALES ====================================================
+angulo_rec_sup = Angulo(  sup_p1_x, high[sup_p1_x], sup_p2_x, high[sup_p2_x] )
+angulo_rec_inf = Angulo(  inf_p1_x,  low[inf_p1_x], inf_p2_x,  low[inf_p2_x] )
+x_cruce = Cruce(sup_p1_x, high[sup_p1_x], sup_p2_x, high[sup_p2_x] , inf_p1_x,  low[inf_p1_x], inf_p2_x,  low[inf_p2_x]  )
+
+y_sup = valor_recta(0, sup_p1_x, high[sup_p1_x], sup_p2_x, high[sup_p2_x] )
+y_inf = valor_recta(0, inf_p1_x,  low[inf_p1_x], inf_p2_x,  low[inf_p2_x] )
+y_med = avg(y_inf, y_sup)
+
+sentido = ""
+if close > y_sup
+    sentido := "Long"
+if close <= y_sup and close > y_med
+    sentido :="Short"
+if close <= y_med and close >= y_inf
+    sentido := "Long"
+if close < y_inf
+    sentido := "Short"
+// ================================================================================    
+
+
+comprado = strategy.position_size > 0 
+vendido  = strategy.position_size < 0
+
+// entrar al mercado
+if not comprado and not vendido
+    if sentido == "Long"            
+        //Realizar una compra
+        cantidad = round(strategy.equity / close  )
+        strategy.entry("Compra",  strategy.long, qty=cantidad, when = cantidad > 0 )
+        SL  := close * ( 1 - (stop_loss/100) )
+        TP  := close * ( 1 + (take_profit/100) )
+        
+    if sentido == "Short"
+        //Realizar una venta
+        cantidad = round(strategy.equity / close  )
+        strategy.entry("Venta",  strategy.short, qty=cantidad, when = cantidad > 0 )
+        SL  := close * ( 1 + (stop_loss/100) )
+        TP  := close * ( 1 - (take_profit/100) )
+        
+// salir del mercado (si estamos comprados) // agregar and cambioFigura o porcentaje segun figura
+if comprado and ( close >= TP or close <= SL)
+    strategy.close("Compra")
+    SL := 0 
+    TP := 0
+
+// salir del mercado (si estamos vendidos) // agregar and cambioFigura o porcentaje segun figura
+if vendido  and ( close <= TP or close >= SL)
+    strategy.close("Venta")
+    SL := 0 
+    TP := 0
+
+
+// ======= salida ======================================
+plot(SL, style = plot.style_circles, color= color.red )
+plot(TP, style = plot.style_circles, color= color.green )
+bgcolor(  comprado ? color.green : na )
+bgcolor(  vendido  ? color.red : na )

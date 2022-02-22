@@ -1,0 +1,45 @@
+//@version=4
+study("Volumen indices Argentos", overlay=true, scale=scale.left)
+indice = input("Merval", title="Indice:", options=["Merval","Rofex"])
+
+longitud_1 = input(2, title="Longitud media movil 1")
+longitud_2 = input(4, title="Longitud media movil 2")
+
+vol = 0.0
+
+vol := vol + security("BCBA:ALUA", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:BBAR", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:BMA", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:BYMA", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:CEPU", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:COME", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:CRES", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:CVH", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:GGAL", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:MIRG", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:LOMA", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:PAMP", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:SUPV", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:TECO2", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:TGNO4", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:TGSU2", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:TRAN", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:TXAR", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:VALO", timeframe.period, volume * hlc3) / 100000
+vol := vol + security("BCBA:YPFD", timeframe.period, volume * hlc3) / 100000
+
+mirg = security("BCBA:MIRG", timeframe.period, volume * hlc3) / 100000
+edn = security("BCBA:EDN", timeframe.period, volume * hlc3) / 100000
+
+if indice == "Merval"
+    vol := vol + edn
+else
+    vol := vol + mirg
+
+mm1 = sma(vol, longitud_1)
+mm2 = sma(vol, longitud_2)
+
+plot(vol, style=plot.style_columns, transp=70)
+
+plot(mm1, color=color.blue, style=plot.style_area, transp=80)
+plot(mm2, color=color.white, style=plot.style_area, transp=90)

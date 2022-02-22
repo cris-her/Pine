@@ -1,0 +1,102 @@
+//@version=4
+study("Panel de Control", max_labels_count=500) // columna inicial 80 y unir paneles para comparar mercados
+
+// sector de input
+fila_inicial = input(1.00)
+columna_inicial = input(0)
+
+lm = input(21, title="longitud de EMA")
+ticker_01 = input("BCBA:AAPL", title="ticker 01", type=input.symbol)
+ticker_02 = input("BCBA:MELI", title="ticker 02", type=input.symbol)
+ticker_03 = input("BCBA:GOOGL", title="ticker 03", type=input.symbol)
+ticker_04 = input("BCBA:MSFT", title="ticker 04", type=input.symbol)
+
+var etiquetas = array.new_label()
+var smaximo = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+var maximo_volumen = 0.00
+
+limpiar_etiquetas() =>
+    cantidad = array.size(etiquetas)
+    if cantidad > 0
+        for r = 0 to cantidad -1
+            e = array.get(etiquetas, r)
+            label.delete(e)
+        array.clear(etiquetas)
+              
+barra(x, y, valor, maximo, el_color, textoFlotante) => 
+    //neg = valor < 0
+    cant = round( abs(valor) * 100 / maximo )
+    barra = ""
+    for r = 1 to cant
+        barra := barra + "X"
+    
+    efondo = label.new( bar_index[x], y, smaximo, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.gray, 80), textcolor=color.new(color.gray, 80), style= label.style_label_left, size=size.auto, tooltip = textoFlotante )
+    evalor = label.new( bar_index[x], y, barra, xloc=xloc.bar_index, yloc=yloc.price, color=el_color, textcolor=el_color, style= label.style_label_left, size=size.auto, tooltip = textoFlotante )
+    
+    array.push(etiquetas, efondo)
+    array.push(etiquetas, evalor)
+
+barra_estrellas(x, y, valor, textoFlotante) => 
+    total = "✰✰✰✰✰"
+    
+    cant = min(valor, 5)
+    estrellas = ""
+    if cant > 0
+        for r = 1 to cant
+            estrellas := estrellas + "✰"
+    
+    efondo = label.new( bar_index[x], y, total, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.gray, 100), textcolor=color.gray, style= label.style_label_left, size=size.normal, tooltip = textoFlotante )
+    evalor = label.new( bar_index[x], y, estrellas, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.gray, 100), textcolor=color.yellow, style= label.style_label_left, size=size.normal, tooltip = textoFlotante )
+    
+    array.push(etiquetas, efondo)
+    array.push(etiquetas, evalor)
+
+barra_porcentual(x, y, valor, maximo, textoFlotante) =>
+    barra(x, y, min(valor, maximo), maximo, valor < 0 ? color.red:color.green, textoFlotante )
+
+barra_volumen(x, y, valor, maximo, textoFlotante) =>
+    barra(x, y, valor, maximo, color.yellow, textoFlotante)
+    
+agregar_fila(x, y, ticker, v_close, v_var, v_ema, v_volumen) =>
+    barra_volumen(x, y, v_volumen, maximo_volumen, tostring(v_volumen,"###,###,###,##0"))
+    
+    negativo = v_var < 0
+    evariacion = label.new( bar_index[x], y, tostring(v_var, "0.00") + "%", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.gray,100), textcolor=negativo ? color.red : color.green, style= label.style_label_right, textalign=text.align_right, size=size.normal )
+    array.push(etiquetas, evariacion)
+    
+    barra_porcentual(x + 20, y, v_var, 15.00, tostring(v_var, "0.00") + "%")
+    
+    eticker = label.new( bar_index[x + 20], y, ticker, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.gray,100), textcolor=negativo ? color.red : color.green, style= label.style_label_right, textalign=text.align_right, size=size.normal )
+    array.push(etiquetas, eticker)
+    
+    // calcular las estrellas
+    estrellas = 3
+    barra_estrellas(x + 38, y, estrellas, tostring(estrellas, "0"))
+    
+    p_ema = 100 -( v_ema * 100 / v_close )
+    barra_porcentual(x + 55, y, p_ema, 25.00, tostring(p_ema,"0.00") + "%")
+    
+    y - 0.05
+
+// sector para obtener los valores de cada ticker
+[clo_01, var_01, ema_01, vol_01] = security( ticker_01, "D", [close, close * 100 / close[1] - 100, ema(close, lm), volume * hlc3] )
+[clo_02, var_02, ema_02, vol_02] = security( ticker_02, "D", [close, close * 100 / close[1] - 100, ema(close, lm), volume * hlc3] )
+[clo_03, var_03, ema_03, vol_03] = security( ticker_03, "D", [close, close * 100 / close[1] - 100, ema(close, lm), volume * hlc3] )
+[clo_04, var_04, ema_04, vol_04] = security( ticker_04, "D", [close, close * 100 / close[1] - 100, ema(close, lm), volume * hlc3] )
+
+maximo_volumen := max( vol_01, vol_02, vol_03, vol_04 )
+
+limpiar_etiquetas()
+
+pos = fila_inicial // 10 activos sino script frena despues de cierto tiempo
+pos := agregar_fila(columna_inicial,  pos, ticker_01, clo_01, var_01, ema_01, vol_01)
+pos := agregar_fila(columna_inicial,  pos, ticker_02, clo_02, var_02, ema_02, vol_02)
+pos := agregar_fila(columna_inicial,  pos, ticker_03, clo_03, var_03, ema_03, vol_03)
+pos := agregar_fila(columna_inicial,  pos, ticker_04, clo_04, var_04, ema_04, vol_04)
+
+pos := fila_inicial + 0.05
+array.push(etiquetas, label.new( bar_index[columna_inicial + 00], pos, "VOLUMEN", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.gray,100), textcolor=color.white, style= label.style_label_left, textalign=text.align_left, size=size.normal ) )
+array.push(etiquetas, label.new( bar_index[columna_inicial + 20], pos, "VARIACION", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.gray,100), textcolor=color.white, style= label.style_label_left, textalign=text.align_left, size=size.normal ) )
+array.push(etiquetas, label.new( bar_index[columna_inicial + 20], pos, "TICKER", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.gray,100), textcolor=color.white, style= label.style_label_right, textalign=text.align_right, size=size.normal ) )
+array.push(etiquetas, label.new( bar_index[columna_inicial + 38], pos, "ESTRELLAS", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.gray,100), textcolor=color.white, style= label.style_label_left, textalign=text.align_left, size=size.normal ) )
+array.push(etiquetas, label.new( bar_index[columna_inicial + 55], pos, "DISTANCIA A EMA " + tostring(lm), xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.gray,100), textcolor=color.white, style= label.style_label_left, textalign=text.align_left, size=size.normal ) )

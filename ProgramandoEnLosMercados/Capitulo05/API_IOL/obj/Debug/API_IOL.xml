@@ -1,0 +1,62 @@
+﻿<?xml version="1.0"?>
+<doc>
+<assembly>
+<name>
+API_IOL
+</name>
+</assembly>
+<members>
+<member name="T:API_IOL.My.Resources.Resources">
+<summary>
+  A strongly-typed resource class, for looking up localized strings, etc.
+</summary>
+</member>
+<member name="P:API_IOL.My.Resources.Resources.ResourceManager">
+<summary>
+  Returns the cached ResourceManager instance used by this class.
+</summary>
+</member>
+<member name="P:API_IOL.My.Resources.Resources.Culture">
+<summary>
+  Overrides the current thread's CurrentUICulture property for all
+  resource lookups using this strongly typed resource class.
+</summary>
+</member>
+<member name="T:API_IOL.API_IOL.Operacion_Message">
+ <summary>
+ Mensaje de respuesta de las llamadas a las operaciones
+ </summary>
+</member>
+<member name="T:API_IOL.API_IOL.Cotizacion">
+ <summary>
+ Mantiene los datos la cotización de un activo
+ </summary>
+</member>
+<member name="T:API_IOL.API_IOL.DatosHistoricos">
+ <summary>
+ Mantiene los datos historicos de un simbolo
+ </summary>
+</member>
+<member name="M:API_IOL.API_IOL.DatosHistoricos.ExportarCSV(System.String,System.String)">
+ <summary>
+ Exportar a formato excel los datos de serie 
+ </summary>
+</member>
+<member name="T:API_IOL.API_IOL.Respuesta">
+ <summary>
+ Clase Base utilizada para mantener el error y el json de todas las clase que puede devolver la libreria
+ </summary>
+</member>
+<member name="M:API_IOL.Solicitudes.#ctor(API_IOL.API_IOL)">
+ <summary>
+ Contructor necesita recibir la intancia de la API_IOL
+ </summary>
+</member>
+<member name="M:API_IOL.Solicitudes.Send(System.Boolean)">
+ <summary>
+ Funcion que se encarga de preparar los parametros, la solicitud y devolver los datos enviado por el servidor
+ </summary>
+ <param name="PasarAccessToken">Si es falso estamos intentando obtener token o refresh token</param>
+</member>
+</members>
+</doc>

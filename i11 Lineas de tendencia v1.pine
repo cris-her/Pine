@@ -1,0 +1,133 @@
+//@version=4
+study("Lineas de tendencias v1", overlay = true, max_bars_back=500)
+inicio_zona_a = input(defval = 120, title = "Inicio zona A")
+inicio_zona_b = input(defval = 60, title = "Inicio zona B")
+descartar = input(defval = 10, title = "Descartar para tomar puntos")
+
+// Funcion que obtiene el valor de la recta en la posicion x, la recta dada por dos puntos
+valor_recta(x, x1, y1, x2, y2) =>
+    ( (y1 - y2)/(x1 - x2) ) * (x - x1) + y1
+
+// Crea las etiquetas para poder marcar los puntos tomados para generar las rectas
+var A1 = label.new(bar_index[0], high, text="A", style=label.style_circle, textcolor=color.yellow, tooltip="Punto A recta superior", size=size.tiny)
+var B1 = label.new(bar_index[0], high, text="B", style=label.style_circle, textcolor=color.yellow, tooltip="Punto B recta superior", size=size.tiny)
+var A2 = label.new(bar_index[0], low, text="", style=label.style_circle, textcolor=color.yellow, tooltip="Punto A recta inferior", size=size.tiny)
+var B2 = label.new(bar_index[0], low, text="", style=label.style_circle, textcolor=color.yellow, tooltip="Punto B recta inferior", size=size.tiny)
+
+//a modo de constante para tener el valor mas alto
+VALOR_MAXIMO = 999999999999.9
+
+//============ obtener X e Y del punto A recta superior
+valor_maximo_za = 0.0
+indice_maximo_za = 0
+for indice = inicio_zona_b to inicio_zona_a
+    if high[indice] > valor_maximo_za
+        valor_maximo_za := high[indice]
+        indice_maximo_za := indice
+
+//============ obtener X e Y del punto B recta superior
+valor_maximo_zb = 0.0
+indice_maximo_zb = 0
+for indice = descartar to inicio_zona_b
+    if high[indice] > valor_maximo_zb
+        valor_maximo_zb := high[indice]
+        indice_maximo_zb := indice
+
+//============ obtener X e Y del punto A recta inferior
+valor_minimo_za = VALOR_MAXIMO
+indice_minimo_za = 0
+for indice = inicio_zona_b to inicio_zona_a
+    if low[indice] < valor_minimo_za
+        valor_minimo_za := low[indice]
+        indice_minimo_za := indice
+
+//============ obtener X e Y del punto B recta inferior
+valor_minimo_zb = VALOR_MAXIMO
+indice_minimo_zb = 0
+for indice = descartar to inicio_zona_b
+    if low[indice] < valor_minimo_zb
+        valor_minimo_zb := low[indice]
+        indice_minimo_zb := indice
+
+//============ recalcular la mejor pendiente para la recta superior ============
+nuevo_indice_sup_za = indice_maximo_za
+nuevo_indice_sup_zb = indice_maximo_zb
+y_maxima_sup = 0.0
+for i = descartar to inicio_zona_a
+    y = valor_recta( i, indice_maximo_za, high[indice_maximo_za], indice_maximo_zb, high[indice_maximo_zb] )
+    if high[i] > y and high[i] - y > 0
+        if i > inicio_zona_b
+            nuevo_indice_sup_za := i
+        else
+            nuevo_indice_sup_zb := i
+        y_maxima_sup := high[i] - y
+
+y_maxima_sup := 0
+for i = inicio_zona_a to descartar
+    y = valor_recta( i, indice_maximo_za, high[indice_maximo_za], indice_maximo_zb, high[indice_maximo_zb] )
+    if high[i] > y and high[i] - y > y_maxima_sup
+        if i > inicio_zona_b
+            nuevo_indice_sup_za := i
+        else
+            nuevo_indice_sup_zb := i
+        y_maxima_sup := high[i] - y
+
+// ============ recalcular la mejor pendiente para la recta inferior ============
+nuevo_indice_inf_za = indice_minimo_za
+nuevo_indice_inf_zb = indice_minimo_zb
+y_minima_inf = 0.0
+for i = descartar to inicio_zona_a
+    y = valor_recta( i, nuevo_indice_inf_za, low[nuevo_indice_inf_za], nuevo_indice_inf_zb, low[nuevo_indice_inf_zb] )
+    if low[i] < y and y - low[i] > y_minima_inf
+        if i > inicio_zona_b                    
+            nuevo_indice_inf_za := i
+        else
+            nuevo_indice_inf_zb := i
+        y_minima_inf := y - low[i]
+y_minima_inf := 0.0
+for i = inicio_zona_a to descartar
+    y = valor_recta( i, nuevo_indice_inf_za, low[nuevo_indice_inf_za], nuevo_indice_inf_zb, low[nuevo_indice_inf_zb] )
+    if low[i] < y and y - low[i] > y_minima_inf
+        if i > inicio_zona_b
+            nuevo_indice_inf_za := i
+        else
+            nuevo_indice_inf_zb := i
+        y_minima_inf := 0
+
+//============ salida que se realiza en la ultima vela del grafico ============
+if barstate.islast
+    // linea superior e inferior (linea temporal para poder calcular las lineas definitivas)
+    ls = line.new( bar_index[indice_maximo_za], high[indice_maximo_za], bar_index[indice_maximo_zb], high[indice_maximo_zb], extend = extend.none, color = color.green )
+    li = line.new( bar_index[indice_minimo_za], low[indice_minimo_za], bar_index[indice_minimo_zb], low[indice_minimo_zb], extend = extend.none, color = color.red )
+
+    // linea superior e inferior definitivas
+    lcs = line.new( bar_index[nuevo_indice_sup_za], high[nuevo_indice_sup_za], bar_index[nuevo_indice_sup_zb], high[nuevo_indice_sup_zb], extend = extend.both, color=color.yellow, style=line.style_dashed )
+    lci = line.new( bar_index[nuevo_indice_inf_za], low[nuevo_indice_inf_za], bar_index[nuevo_indice_inf_zb], low[nuevo_indice_inf_zb], extend = extend.both, color=color.yellow, style=line.style_dashed )
+
+    // lineas verticales para demarcar las zonas A, Zona B y de descarte
+    vertical1 = line.new(bar_index[descartar], low[descartar], bar_index[descartar], low[descartar]+0.0001, extend=extend.both, color=color.white )
+    vertical2 = line.new(bar_index[inicio_zona_b], low[inicio_zona_b], bar_index[inicio_zona_b], low[inicio_zona_b]+0.0001, extend=extend.both, color=color.white )
+    vertical3 = line.new(bar_index[inicio_zona_a], low[inicio_zona_a], bar_index[inicio_zona_a], low[inicio_zona_a]+0.10, extend=extend.both, color=color.white )
+    
+    // Dibujar el punto A de la recta superior
+    label.set_x(A1, bar_index[nuevo_indice_sup_za] )
+    label.set_y(A1, high[nuevo_indice_sup_za] )
+    
+    // Dibujar el punto B de la recta superior
+    label.set_x(B1, bar_index[nuevo_indice_sup_zb] )
+    label.set_y(B1, high[nuevo_indice_sup_zb] )
+    
+    // Dibujar el punto A de la recta inferior
+    label.set_x(A2, bar_index[nuevo_indice_inf_za] )
+    label.set_y(A2, high[nuevo_indice_inf_za] )
+   
+    // Dibujar el punto B de la recta inferior
+    label.set_x(B2, bar_index[nuevo_indice_inf_zb] )
+    label.set_y(B2, high[nuevo_indice_inf_zb] )
+    
+    line.delete( ls[1] )
+    line.delete( ls[1] )
+    line.delete( ls[1] )
+    line.delete( ls[1] )
+
+plot(close)

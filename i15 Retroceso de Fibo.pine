@@ -1,0 +1,27 @@
+//@version=4
+study("Retroceso de Fibo", overlay=true, max_bars_back=600) // vs extension de fibo
+barras = input(200, title="Barras", minval=50, maxval=600) // maxval vs max buffer 300 velas
+
+// obtener el minimo
+minimo_precio = lowest(barras) // en bloque principal 
+minimo_barra = abs(lowestbars(barras))
+
+// obtener el maximo
+maximo_precio = highest(barras)
+maximo_barra = abs(highestbars(barras))
+
+if barstate.islast
+    precio_50 = minimo_precio + (maximo_precio - minimo_precio) * 0.5
+    precio_618 = 0.0
+    
+    x = max(minimo_barra, maximo_barra)
+    
+    if minimo_barra > maximo_barra
+        precio_618 := maximo_precio - (maximo_precio - minimo_precio) * 0.618
+    else
+        precio_618 := minimo_precio + (maximo_precio - minimo_precio) * 0.618
+        
+    line.new( bar_index[x], minimo_precio, bar_index[0], minimo_precio, color=color.yellow, style=line.style_dashed, extend=extend.right )
+    line.new( bar_index[x], maximo_precio, bar_index[0], maximo_precio, color=color.yellow, style=line.style_dashed, extend=extend.right )
+    line.new( bar_index[x], precio_50, bar_index[0], precio_50, color=color.green, style=line.style_dotted, extend=extend.right )
+    line.new( bar_index[x], precio_618, bar_index[0], precio_618, color=color.red, style=line.style_dotted, extend=extend.right )

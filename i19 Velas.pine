@@ -1,0 +1,8 @@
+//@version=4 
+study("Velas", overlay=false) // hover 
+
+mm = ema(close, 21)
+[o,h,l,c] = security("BCBA:YPFD", timeframe.period, [open, high, low, close])
+
+plotcandle(o, h, l, c, color = mm > mm[1] ? color.green : color.red)
+// plot(mm) // overlay = true

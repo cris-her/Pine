@@ -1,0 +1,119 @@
+//@version=1
+strategy(shorttitle = "SQZMOM ADX", title="Squeeze Momentum Indicator + ADX", overlay=false)
+
+// MOM
+length = input(20, title="BB Length")
+mult = input(2.0,title="BB MultFactor")
+lengthKC=input(20, title="KC Length")
+multKC = input(1.5, title="KC MultFactor")
+ 
+useTrueRange = input(true, title="Use TrueRange (KC)", type=bool)
+ 
+// Calculate BB
+source = close
+basis = sma(source, length)
+dev = mult * stdev(source, length)
+upperBB = basis + dev
+lowerBB = basis - dev
+ 
+// Calculate KC
+ma = sma(source, lengthKC)
+range = useTrueRange ? tr : (high - low)
+rangema = sma(range, lengthKC)
+upperKC = ma + rangema * multKC
+lowerKC = ma - rangema * multKC
+ 
+sqzOn  = (lowerBB > lowerKC) and (upperBB < upperKC)
+sqzOff = (lowerBB < lowerKC) and (upperBB > upperKC)
+noSqz  = (sqzOn == false) and (sqzOff == false)
+ 
+val = linreg(source  -  avg(avg(highest(high, lengthKC), lowest(low, lengthKC)),sma(close,lengthKC)), 
+            lengthKC,0)
+ 
+bcolor = iff( val > 0, 
+            iff( val > nz(val[1]), lime, green),
+            iff( val < nz(val[1]), red, maroon))
+scolor = noSqz ? blue : sqzOn ? black : gray 
+plot(val, color=bcolor, style=histogram, linewidth=4)
+plot(0, color=scolor, style=cross, linewidth=2)
+
+// ADX
+len = input(14, minval=1, title="DI Length")
+lensig = input(14, title="ADX Smoothing", minval=1, maxval=50)
+
+
+up = change(high)
+down = -change(low)
+trur = rma(tr, len)
+
+plus = fixnan(100 * rma(up > down and up > 0 ? up : 0, len) / trur)
+minus = fixnan(100 * rma(down > up and down > 0 ? down : 0, len) / trur)
+
+sum = plus + minus 
+adx = 100 * rma(abs(plus - minus) / (sum == 0 ? 1 : sum), lensig)
+
+col = adx <= 10 ? gray : adx > 10 and adx <= 20 ? aqua : adx > 20 and adx <= 40 ? green : adx > 40 ? orange : yellow
+
+//plot(plus, color=lime, title="+DI", style=line, linewidth=3)
+//plot(minus, color=red, title="-DI", style=line, linewidth=3)
+plot(adx, color=col, title="ADX", style=line)
+plot(23, title="23 Line", style=circles, linewidth=1, color=aqua)
+
+Angulo(_serie) =>
+    atan(_serie - _serie[1]) * 180 / acos(-1)
+    
+pendiente = Angulo(adx)
+
+compra = val < 0 and val > nz(val[1])  and ema(close, 10) > ema(close, 55)  // bcolor == maroon   and pendiente < 0 //      // 
+venta = val > 0 and val < nz(val[1]) // bcolor == green //   // and pendiente < 0
+bgcolor(compra  ? white : na, transp=0) // and compra[1] == false
+bgcolor(venta  ? black : na, transp=0) //and venta[1] == false
+
+// STRATEGY
+//SL = 0.0
+//TP = 0.0
+//en_pausa = 0
+
+stop_loss = input(defval=1000.00, title="Porcentaje Stop loss", type=float)
+take_profit = input(defval=1000.00, title="Porcentaje Take profit", type=float)
+esperar = input(defval=0, title="Velas a esperar")
+
+// desde
+desde_a = input(2020, title="Desde Año")
+desde_m = input(10, title="Desde Mes", minval=1, maxval=12)
+desde_d = input(1, title="Desde Dia", minval=1, maxval=31)
+// hasta
+hasta_a = input(2030, title="Hasta Año")
+hasta_m = input(1, title="Hasta Mes", minval=1, maxval=12)
+hasta_d = input(1, title="Hasta Dia", minval=1, maxval=31)
+
+FechaValida() =>
+    desde = time >= timestamp(syminfo.timezone, desde_a, desde_m, desde_d, 0, 0)
+    hasta = time <= timestamp(syminfo.timezone, hasta_a, hasta_m, hasta_d, 0, 0)
+    desde and hasta
+
+comprado = strategy.position_size > 0
+//en_pausa := max(en_pausa -1, 0)
+
+
+// realizar compra
+strategy.entry("Compra", long=strategy.long, when=(not comprado and compra  and FechaValida() )) //and en_pausa == 0   and compra[1] == false
+strategy.exit("TP - SL", "Compra", limit = close * (1 + take_profit/100), stop = close * (1 - stop_loss/100))
+// salir sl
+//en_pausa = iff( comprado and close <= SL, esperar, max(en_pausa -1, 0) )
+//strategy.close("Compra", when=(comprado and close <= SL))
+// salir tp
+//strategy.close("Compra", when=(comprado and close >= TP))
+
+
+// realizar venta es cerrar compra no short
+strategy.close("Compra", when=(comprado and venta and venta[1] == false))
+    
+// realizar venta x finalizacion periodo
+strategy.close("Compra", when=( comprado and not FechaValida() ))
+
+
+//plotColour = iff(strategy.position_size > 0, red,
+//     iff(strategy.position_size < 0, green,
+//     yellow))
+//plot(series=sma(close, 10), color=plotColour)

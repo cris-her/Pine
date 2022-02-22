@@ -1,0 +1,15 @@
+//@version=4
+study("ADR vs Local", overlay=true)
+simbolo = input("BCBA:GGAL", title="Simbolo", type=input.symbol)
+
+local = security(simbolo, timeframe.period, close)
+
+var adr_close = 0.0
+var loc_close = 0.0
+
+if dayofweek != dayofweek[1]
+    adr_close := close[1]
+    loc_close := local[1]
+
+nuevo = adr_close * (local / loc_close)
+plot(nuevo, color=color.white, linewidth=3)

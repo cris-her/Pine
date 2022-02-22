@@ -1,0 +1,77 @@
+//@version=4
+study("Mi script")
+simbolo_01 = input("BCBA:ALUA", title="Activo 01", type=input.symbol)
+simbolo_02 = input("BCBA:BBAR", title="Activo 02", type=input.symbol)
+simbolo_03 = input("BCBA:BMA", title="Activo 03", type=input.symbol)
+simbolo_04 = input("BCBA:BYMA", title="Activo 04", type=input.symbol)
+simbolo_05 = input("BCBA:CEPU", title="Activo 05", type=input.symbol)
+simbolo_06 = input("BCBA:COME", title="Activo 06", type=input.symbol)
+simbolo_07 = input("BCBA:CRES", title="Activo 07", type=input.symbol)
+simbolo_08 = input("BCBA:CVH", title="Activo 08", type=input.symbol)
+simbolo_09 = input("BCBA:EDN", title="Activo 09", type=input.symbol)
+simbolo_10 = input("BCBA:GGAL", title="Activo 10", type=input.symbol)
+simbolo_11 = input("BCBA:HARG", title="Activo 11", type=input.symbol)
+simbolo_12 = input("BCBA:LOMA", title="Activo 12", type=input.symbol)
+simbolo_13 = input("BCBA:MIRG", title="Activo 13", type=input.symbol)
+simbolo_14 = input("BCBA:PAMP", title="Activo 14", type=input.symbol)
+simbolo_15 = input("BCBA:SUPV", title="Activo 15", type=input.symbol)
+simbolo_16 = input("BCBA:TECO2", title="Activo 16", type=input.symbol)
+simbolo_17 = input("BCBA:TGNO4", title="Activo 17", type=input.symbol)
+simbolo_18 = input("BCBA:TGSU2", title="Activo 18", type=input.symbol)
+simbolo_19 = input("BCBA:TRAN", title="Activo 19", type=input.symbol)
+simbolo_20 = input("BCBA:TXAR", title="Activo 20", type=input.symbol)
+simbolo_21 = input("BCBA:VALO", title="Activo 21", type=input.symbol)
+simbolo_22 = input("BCBA:YPFD", title="Activo 22", type=input.symbol)
+
+var comprar = array.new_string()
+
+analizar(simbolo) =>
+    [c1, c2, c3] = security(simbolo, timeframe.period, [ema(close,7) > ema(close,21), rsi(volume,14) > 50, rsi(close,14) > 50] )
+    
+    if (c1 and c2 and c3)
+        array.push(comprar, simbolo)
+
+// programa principal
+
+array.clear(comprar)
+
+analizar(simbolo_01)
+analizar(simbolo_02)
+analizar(simbolo_03)
+analizar(simbolo_04)
+analizar(simbolo_05)
+analizar(simbolo_06)
+analizar(simbolo_07)
+analizar(simbolo_08)
+analizar(simbolo_09)
+analizar(simbolo_10)
+analizar(simbolo_11)
+analizar(simbolo_12)
+analizar(simbolo_13)
+analizar(simbolo_14)
+analizar(simbolo_15)
+analizar(simbolo_16)
+analizar(simbolo_17)
+analizar(simbolo_18)
+analizar(simbolo_19)
+analizar(simbolo_20)
+analizar(simbolo_21)
+analizar(simbolo_22)
+
+informacion = "Activos a Comprar\n"
+informacion := informacion + "==============\n"
+
+cantidad = array.size(comprar)
+if cantidad > 0
+    for i = 0 to cantidad - 1
+        informacion := informacion + array.get(comprar, i) + "\n"
+
+label _lbl = label.new(time, open, xloc=xloc.bar_time,
+  text = informacion,
+  color = color.black,
+  style = label.style_label_left,
+  textcolor = color.white,
+  size = size.normal,
+  textalign = text.align_right)
+  
+label.delete(_lbl[1])

@@ -1,0 +1,22 @@
+//@version=4
+study("Angulo")
+normalizacion = input(220, title="normalizacion") // configuracion de graficos - bloquear la relacion precio/barra
+
+pendiente(y) =>
+    y / y[1] -1
+
+angulo(y) =>
+    atan( pendiente(y) ) * 180 / acos(-1) * normalizacion
+ 
+anguloCruce(m1, m2) =>
+    atan( ( pendiente(m1) - pendiente(m2) ) / ( 1 + pendiente(m1) * pendiente(m2) ) ) * 180 / acos(-1) * normalizacion
+        
+m1 = sma(close, 21)
+m2 = sma(close, 100)
+
+hline(0, color=color.yellow)
+
+//plot(angulo(m1))
+//plot(angulo(m2), color=color.green)
+a = anguloCruce(m1,m2)
+plot( cross(m1, m2) ? abs(a) : na, color= a > 0 ? color.green : color.red, style=plot.style_columns)

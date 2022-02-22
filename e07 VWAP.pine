@@ -1,0 +1,105 @@
+//@version=4
+strategy("Estrategia VWAP", overlay=true)
+var acumulador_vxp = 0.0
+var acumulador_vol = 0.0
+var ultimo = 0
+var SL = 0.0
+var TP = 0.0
+var en_pausa = 0
+
+periodo = input(defval="Semanal", title="Periodo", type=input.string, options=["Mensual", "Semanal", "Diario"])
+porcentaje = input(defval=2.00, title="Porcentaje bandas")
+
+stop_loss = input(defval=2.00, title="Porcentaje Stop loss", type=input.float, step=0.2)
+take_profit = input(defval=5.00, title="Porcentaje Take profit", type=input.float, step=0.2)
+angulo_permitido = input(defval=0.01, title="Angulo permitido", type=input.float, step=0.2)
+
+esperar = input(defval=5, title="Velas a esperar")
+pintar_tendencia = input(defval=false, title="Pintar segun tendencia")
+
+Angulo(_serie) =>
+    atan(_serie - _serie[1]) * 180 / acos(-1)
+
+if periodo == "Diario" and dayofweek != ultimo
+    // reseteamos los acumuladores
+    acumulador_vxp := 0.0
+    acumulador_vol := 0.0
+    ultimo := dayofweek
+
+if periodo == "Semanal" and weekofyear != ultimo
+    // reseteamos los acumuladores
+    acumulador_vxp := 0.0
+    acumulador_vol := 0.0
+    ultimo := weekofyear
+
+if periodo == "Mensual" and month != ultimo
+    // reseteamos los acumuladores
+    acumulador_vxp := 0.0
+    acumulador_vol := 0.0
+    ultimo := month
+
+// calcular VWAP
+vxp = volume * hlc3
+acumulador_vxp := acumulador_vxp + vxp
+acumulador_vol := acumulador_vol + volume
+vwap2 = acumulador_vxp / acumulador_vol 
+// Orden visual - Traer al frente
+
+pendiente = Angulo(vwap2)
+
+comprado = strategy.position_size > 0
+vendido = strategy.position_size < 0
+
+banda_superior = vwap2 * (1 + porcentaje/100)
+banda_inferior = vwap2 * (1 - porcentaje/100)
+
+en_pausa := max(en_pausa -1, 0)
+
+if not comprado and not vendido
+    if pendiente > angulo_permitido and close < banda_superior and en_pausa == 0
+        // hacer la compra
+        cantidad = round(strategy.equity / close)
+        strategy.entry("Compra", strategy.long, qty=cantidad, comment="Compra")
+        SL := close * (1 - stop_loss/100)
+        TP := close * (1 + take_profit/100)
+
+    if -pendiente > angulo_permitido and close > banda_inferior and en_pausa == 0
+        // hacer la venta
+        cantidad = round(strategy.equity / close)
+        strategy.entry("Venta", strategy.short, qty=cantidad, comment="Venta")
+        SL := close * (1 + stop_loss/100)
+        TP := close * (1 - take_profit/100)
+
+if comprado
+    // salir tp
+    if close >= TP
+        strategy.close("Compra", comment="TP")
+
+    // salir sl
+    if close <= SL
+        strategy.close("Compra", comment="SL")
+        en_pausa := esperar
+
+if vendido
+    // salir tp
+    if close <= TP
+        strategy.close("Venta", comment="TP")
+
+    // salir sl
+    if close >= SL
+        strategy.close("Venta", comment="SL")
+        en_pausa := esperar
+
+// SL TP
+plot( SL, color=color.red, style=plot.style_circles)
+plot( TP, color=color.green, style=plot.style_circles)
+
+// bandas de tolerancia
+plot( banda_superior, color=color.gray)
+plot( banda_inferior, color=color.gray)
+
+// VWAP
+plot(vwap2, color=color.yellow)
+
+bgcolor( pintar_tendencia ? (pendiente > 0 ? color.green : na) : (comprado ? color.green : na) )
+bgcolor( pintar_tendencia ? (pendiente < 0 ? color.red : na) : (vendido ? color.red : na) )

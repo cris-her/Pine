@@ -1,0 +1,87 @@
+//@version=4
+strategy("BB Estrategia", overlay=true)
+longitud = input(20, title="Longitud")
+multiplicador = input(2.0, title="Multiplicador", type=input.float, step=0.05)
+
+stop_loss = input("Central", title="Stop loss (banda)", options = ["Central", "Opuesta"]) // take_profit take profit
+take_profit = input(2.00, title="Take profit", type=input.float, step=0.10) // stop_loss stop loss
+
+filtrar_desde = input(false, title="====> Aplicar Filtro Desde <====")
+desde_a = input(2000, title="Desde Año")
+desde_m = input(1, title="Desde Mes", minval=1, maxval=12)
+desde_d = input(1, title="Desde Día", minval=1, maxval=31)
+
+filtrar_hasta = input(true, title="====> Aplicar Filtro Hasta <====")
+hasta_a = input(2019, title="Desde Año")
+hasta_m = input(8, title="Desde Mes", minval=1, maxval=12)
+hasta_d = input(8, title="Desde Día", minval=1, maxval=31)
+
+FechaValida() =>
+    desde = time >= timestamp(syminfo.timezone, desde_a, desde_m, desde_d, 0, 0) or not filtrar_desde
+    hasta = time >= timestamp(syminfo.timezone, hasta_a, hasta_m, hasta_d, 0, 0) or not filtrar_hasta
+    desde and hasta
+
+var TP = 0.0 // SL
+
+[banda_central, banda_superior, banda_inferior] = bb(close, longitud, multiplicador)
+
+comprado = strategy.position_size > 0
+vendido = strategy.position_size < 0
+
+if not comprado and not vendido and FechaValida()
+    if close < banda_inferior
+        // realizar la Venta // compra
+        cantidad = round( strategy.equity / close )
+        strategy.entry("Venta", strategy.short, qty = cantidad, when = cantidad > 0 ) // compra - long
+        TP := close * ( 1 - (take_profit/100) ) // SL - stop_loss
+
+    if close > banda_superior
+        // realizar la Compra // venta
+        cantidad = round( strategy.equity / close )
+        strategy.entry("Compra", strategy.long, qty = cantidad, when = cantidad > 0 ) // venta short
+        TP := close * ( 1 + (take_profit/100) ) // SL - stop_loss
+
+if comprado
+    // verificar el Stop Loss // take profit
+    if stop_loss == "Central" // take_profit
+        if close <= banda_central // >=
+            strategy.close("Compra", comment="SL") // TP
+            TP := 0 // SL
+    if stop_loss == "Opuesta" // take_profit
+        if close <= banda_inferior // >= banda_superior
+            strategy.close("Compra", comment="SL") // TP
+            TP := 0 // SL
+
+    // Verificar el take profit // stop loss
+    if close >= TP // <= SL
+        strategy.close("Compra", comment="TP") // SL
+        TP := 0 // SL
+    if not FechaValida()
+        strategy.close("Compra", comment="Fin de periodo")
+        TP := 0 // SL
+
+if vendido
+    // verificar el Stop loss // take profit
+    if stop_loss == "Central" // take_profit
+        if close >= banda_central // <=
+            strategy.close("Venta", comment="SL") // TP
+            TP := 0 // SL
+    if stop_loss == "Opuesta"
+        if close >= banda_superior // <= banda_inferior
+            strategy.close("Venta", comment="SL") // TP
+            TP := 0 // SL
+
+    // Verificar el take profit // stop loss
+    if close <= TP // >= SL
+        strategy.close("Venta", comment="TP") // SL
+        TP := 0 // SL
+    if not FechaValida()
+        strategy.close("Venta", comment="Fin de periodo")
+        TP := 0 // SL
+
+// salida
+plot(TP > 0 ? TP : na, style=plot.style_circles, color=color.red) // SL > 0 ? SL
+g1 = plot(banda_superior, color=color.aqua)
+plot(banda_central, color=color.red)
+g2 = plot(banda_inferior, color=color.aqua)
+fill(g1, g2, color=color.aqua, transp=97)

@@ -1,0 +1,20 @@
+//@version=4 
+study("Pivot", overlay=false) // divergence indicator, auto fib extension // Open - New default built-in script
+dist = input(10, title="distancia para el pivot")
+
+rsi = rsi(close, 14)
+
+pl = pivotlow(rsi, dist, dist)
+if not na(pl)
+    label.new(bar_index[dist], pl, text="", style=label.style_circle, textcolor=color.yellow, size=size.tiny, color=color.green)
+    
+ph = pivothigh(rsi, dist, dist)
+if not na(ph)
+    label.new(bar_index[dist], ph, text="", style=label.style_circle, textcolor=color.yellow, size=size.tiny, color=color.yellow)
+
+plot(rsi, color=color.purple)
+
+l1 = hline(70)
+hline(50)
+l2 = hline(30)
+fill(l1, l2, color=color.purple)

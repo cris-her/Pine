@@ -1,0 +1,11 @@
+//@version=4
+// study("Media apertura-cierre",overlay=false)
+// plot( (open-close) / 2 , style=plot.style_histogram )
+// plot( (open-close) / 2 )
+
+study("Rango del precio",overlay=true)
+plot(high)
+plot(low)
+
+// Las series permiten acceder a valores anteriores de cada vela, el script se recalcula por cada una de las velas y no dibuja si el valor es indefinido
+plot( open + (close[3] - close[0]) / 2)

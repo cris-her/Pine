@@ -1,0 +1,29 @@
+//@version=4
+study("Capitulo 2", "Cap2", true)
+// int, float, string, boolean, operators
+// precio = precio + 10.0
+// plot(precio) linea horizontal
+// plot(texto) error
+bgcolor(color.green) // ctrl + espacio
+
+maximos = highest(high,200)
+minimos = lowest(low,200)
+// media = minimos + (maximos - minimos) / 2
+plot(maximos)
+plot(minimos)
+
+// periodo = input(21, "Periodo", input.integer)
+periodo = input(title="Periodo", type=input.integer, defval=21)
+texto = input(title="Texto", type=input.string, defval="Hola Mundo")
+importe = input(title="Importe", type=input.float, defval=11.12, minval=10, maxval=15)
+MediaMovil = sma(close, periodo)
+plot(MediaMovil)
+
+// study("Capitulo 2", "Cap2", false)
+// // funcion que devuelve serie de valores de otro activo financiero
+// Precios_Adr = security("NASDAQ:GGAL", timeframe.period, close)
+// Precios_Loc = security("BCBA:GGAL", timeframe.period, close)
+// ccl = Precios_Loc / Precios_Adr * 10
+// media = sma(ccl, 40)
+// plot(ccl)
+// plot(media)

@@ -1,0 +1,135 @@
+//@version=4
+study("Lineas de tendencias v2", "LT  2", overlay = true)
+inicio_zona_a = input(defval = 120, title = "Inicio zona A")
+inicio_zona_b = input(defval = 60, title = "Inicio zona B")
+descartar = input(defval = 10, title = "Descartar para tomar puntos")
+para_canal = input(defval = 700, title = "Barras para considerar canal")
+
+// Funcion que obtiene el valor de la recta en la posicion x, la recta dada por dos puntos
+valor_recta(x, x1, y1, x2, y2) =>
+    ( (y1 - y2)/(x1 - x2) ) * (x - x1) + y1
+    
+Angulo(x1, y1, x2, y2) =>
+    -atan( (y2-y1)/(x2-x1) * 180 / acos(-1) )
+    
+Cruce(x1_sup, y1_sup, x2_sup, y2_sup, x1_inf, y1_inf, x2_inf, y2_inf) =>
+    m_sup = (y2_sup - y1_sup) / (x2_sup - x1_sup)
+    m_inf = (y2_inf - y1_inf) / (x2_inf - x1_inf)
+    ( - m_inf * x1_inf + m_sup * x1_sup - y1_sup + y1_inf ) / (m_sup - m_inf)
+    
+// Crea las etiquetas para poder marcar los puntos tomados para generar las rectas
+var A1 = label.new(bar_index[0], high, text="A", style=label.style_circle, textcolor=color.yellow, tooltip="Punto A recta superior", size=size.tiny)
+var B1 = label.new(bar_index[0], high, text="B", style=label.style_circle, textcolor=color.yellow, tooltip="Punto B recta superior", size=size.tiny)
+var A2 = label.new(bar_index[0], low, text="", style=label.style_circle, textcolor=color.yellow, tooltip="Punto A recta inferior", size=size.tiny)
+var B2 = label.new(bar_index[0], low, text="", style=label.style_circle, textcolor=color.yellow, tooltip="Punto B recta inferior", size=size.tiny)
+
+line vertical1 = na
+line vertical2 = na
+line vertical3 = na
+
+line lcs = na
+line lci = na
+
+var lb = label.new( bar_index, na, textalign=text.align_right, textcolor=color.yellow, color=color.black, yloc=yloc.price )
+label.set_style(lb, label.style_label_center)
+
+valor_y_lb = lowest(30)
+texto = ""
+
+//============ salida que se realiza en la ultima vela del grafico ============
+if barstate.islast
+    sup_p1_x = 0 
+    sup_p2_x = 0
+    encontrado = false
+    for zb = inicio_zona_a to inicio_zona_b-1
+        for za = inicio_zona_b to descartar
+            sup_p1_x := za
+            sup_p2_x := zb
+            encontrado := true
+            for x = inicio_zona_a to descartar
+                y = valor_recta( x, za, nz(high[za]), zb, nz(high[zb]) )
+                if nz(high[x]) > y
+                    encontrado := false
+                    break
+      
+            if encontrado
+                break
+        if encontrado
+            break
+            
+    inf_p1_x = 0
+    inf_p2_x = 0
+    encontrado := false
+    for zb = inicio_zona_a to inicio_zona_b-1
+        for za = inicio_zona_b to descartar
+            inf_p1_x := za
+            inf_p2_x := zb
+            encontrado := true
+            for x = inicio_zona_a to descartar
+                y = valor_recta(x, za, nz(low[za]), zb, nz(low[zb]) )
+                if nz(low[x]) < y
+                    encontrado := false
+                    break
+                    
+            if encontrado
+                break
+        if encontrado
+            break
+    
+    // recta superior punto a (sup_p1_x, high)     punto b (sup_p2_x, high)
+    // recta inferior punto a (inf_p1_x, low)      punto b (inf_p2_x, low)
+    
+    // calculo de los angulos
+    // descubrir unen las rectas
+    angulo_rec_sup = Angulo( sup_p1_x, high[sup_p1_x], sup_p2_x, high[sup_p2_x] )
+    angulo_rec_inf = Angulo( inf_p1_x, low[inf_p1_x], inf_p2_x, low[inf_p2_x] )
+    
+    x_cruce = Cruce(sup_p1_x, high[sup_p1_x], sup_p2_x, high[sup_p2_x], inf_p1_x, low[inf_p1_x], inf_p2_x, low[inf_p2_x] )
+    
+    figura = ""
+    if abs(x_cruce) > para_canal
+        figura := "Canal"
+    else
+        if x_cruce > 0
+            figura := "Megafono"
+        else
+            figura := "Cuña"
+    
+    texto := "Angulo recta sup: " + tostring(angulo_rec_sup, "0.00") + "°\n"
+    texto := texto + "Angulo recta inf: " + tostring(angulo_rec_inf, "0.00") + "°\n"
+    texto := texto + "Cruce de las rectas: " + tostring(x_cruce, "0") + "\n"
+    texto := texto + "Figura: " + figura
+        
+    label.set_text(lb, texto)
+    label.set_x(lb, bar_index)
+    label.set_y(lb, valor_y_lb)
+    
+    // linea superior e inferior definitivas
+    lcs = line.new( bar_index[sup_p1_x], high[sup_p1_x], bar_index[sup_p2_x], high[sup_p2_x], extend = extend.both, color=color.yellow, style=line.style_dashed )
+    lci = line.new( bar_index[inf_p1_x], low[inf_p1_x], bar_index[inf_p2_x], low[inf_p2_x], extend = extend.both, color=color.yellow, style=line.style_dashed )
+    
+    // lineas verticales para demarcar las zonas A, Zona B y de descarte
+    vertical1 = line.new(bar_index[descartar], low[descartar], bar_index[descartar], low[descartar]+0.0001, extend=extend.both, color=color.white )
+    vertical2 = line.new(bar_index[inicio_zona_b], low[inicio_zona_b], bar_index[inicio_zona_b], low[inicio_zona_b]+0.0001, extend=extend.both, color=color.white )
+    vertical3 = line.new(bar_index[inicio_zona_a], low[inicio_zona_a], bar_index[inicio_zona_a], low[inicio_zona_a]+0.10, extend=extend.both, color=color.white )
+    
+    // Dibujar el punto A de la recta superior
+    label.set_x(A1, bar_index[sup_p2_x] )
+    label.set_y(A1, high[sup_p2_x] )
+    
+    // Dibujar el punto B de la recta superior
+    label.set_x(B1, bar_index[sup_p1_x] )
+    label.set_y(B1, high[sup_p1_x] )
+    
+    // Dibujar el punto A de la recta inferior
+    label.set_x(A2, bar_index[inf_p2_x] )
+    label.set_y(A2, high[inf_p2_x] )
+   
+    // Dibujar el punto B de la recta inferior
+    label.set_x(B2, bar_index[inf_p1_x] )
+    label.set_y(B2, high[inf_p1_x] )
+    
+    line.delete( lcs[1] )
+    line.delete( lci[1] )
+
+plot(close)

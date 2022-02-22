@@ -1,0 +1,50 @@
+//@version=4
+// study("Media Movil", overlay=true)
+// mm = (close[0] + close[1] + close[2] + close[3] + close[4]) / 5
+// mm = sum(close, 10) / 10
+
+// simple = sma(close, 9) ema, wma, ctrl + clic
+// plot(simple, color=color.yellow)
+// plot(simple[5], color=color.yellow) se desplaza hacia la derecha
+
+// study("Media Movil", overlay=false)
+// mo = mom(close, 10) // momentum
+// mm = sma(mo, 20)
+// plot(mo, color=color.yellow)
+// plot(mm, color=color.green)
+
+study("Media Movil", overlay=true)
+mm_rapida = sma(close, 21)
+mm_lenta = sma(close, 50)
+plot(mm_rapida, color=color.blue)
+plot(mm_lenta, color=color.orange)
+
+cruce_arriba = crossover(mm_rapida, mm_lenta)
+cruce_abajo = crossunder(mm_rapida, mm_lenta) // crossover(mm_lenta, mm_rapida)
+plotshape( cruce_arriba, style=shape.arrowup, location = location.belowbar, color = color.green, size = size.huge, text = "Compra")
+plotshape( cruce_abajo, style=shape.arrowdown, location = location.abovebar, color = color.red, size = size.huge, text = "Venta")
+
+// study("Media Movil", overlay=true)
+mm_v = sma(close, 5)
+mm_a = sma(close, 10)
+mm_r = sma(close, 20)
+
+alcista = (mm_v > mm_a) and (mm_a > mm_r)
+bajista = (mm_v < mm_a) and (mm_a < mm_r)
+bgcolor(alcista ? color.green : na)
+bgcolor(bajista ? color.red : na)
+
+plot(mm_v, color=color.green)
+plot(mm_a, color=color.yellow)
+plot(mm_r, color=color.red)
+
+// study("Media Movil", overlay=false)
+// Mm = ema(close, 21)
+// angulo_rad = atan( (Mm[0] - Mm[1]) ) // atan( (Mm[0] - Mm[1]) / -(0 - 1) )
+// angulo_gra = angulo_rad * 180 / acos(-1) // PI
+
+// plot(angulo_gra) // agregar media movil al grafico principal
+// hline(0, color=color.yellow)
+// hline(10, color=color.green)
+// hline(-10, color=color.green)
+// posibles señales si el grado esta entre 5 y 10

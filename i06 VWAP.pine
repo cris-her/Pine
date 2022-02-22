@@ -1,0 +1,38 @@
+//@version=4
+study("Indicador VWAP", overlay=true)
+var acumulador_vxp = 0.0
+var acumulador_vol = 0.0
+var ultimo = 0
+
+periodo = input(defval="Semanal", title="Periodo", type=input.string, options=["Mensual", "Semanal", "Diario"])
+porcentaje = input(defval=2.00, title="Porcentaje bandas")
+
+if periodo == "Diario" and dayofweek != ultimo
+    // reseteamos los acumuladores
+    acumulador_vxp := 0.0
+    acumulador_vol := 0.0
+    ultimo := dayofweek
+
+if periodo == "Semanal" and weekofyear != ultimo
+    // reseteamos los acumuladores
+    acumulador_vxp := 0.0
+    acumulador_vol := 0.0
+    ultimo := weekofyear
+
+if periodo == "Mensual" and month != ultimo
+    // reseteamos los acumuladores
+    acumulador_vxp := 0.0
+    acumulador_vol := 0.0
+    ultimo := month
+
+vxp = volume * hlc3 // (high + low + close) / 3
+acumulador_vxp := acumulador_vxp + vxp
+acumulador_vol := acumulador_vol + volume
+vwap2 = acumulador_vxp / acumulador_vol // vwap(hlc3)
+
+// bandas de tolerancia
+plot( vwap2 * (1 + porcentaje/100), color=color.gray)
+plot( vwap2 * (1 - porcentaje/100), color=color.gray)
+
+// VWAP
+plot(vwap2, color=color.yellow)

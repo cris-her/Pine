@@ -1,0 +1,64 @@
+//@version=4
+study("Lineas de tendencias", overlay = true, max_bars_back=500)
+inicio_zona_a = input(defval = 200, title = "Inicio zona A")
+inicio_zona_b = input(defval = 40, title = "Inicio zona B")
+
+valor_recta(x, x1, y1, x2, y2) =>
+    ( (y1 - y2)/(x1 - x2) ) * (x - x1) + y1
+
+valor_maximo_za = 0.0
+indice_maximo_za = 0
+for indice = inicio_zona_b to inicio_zona_a
+    if high[indice] > valor_maximo_za
+        valor_maximo_za := high[indice]
+        indice_maximo_za := indice
+
+valor_maximo_zb = 0.0
+indice_maximo_zb = 0
+for indice = 0 to inicio_zona_b 
+    if high[indice] > valor_maximo_zb
+        valor_maximo_zb := high[indice]
+        indice_maximo_zb := indice
+
+valor_minimo_za = 9999999999.9
+indice_minimo_za = 0
+for indice = inicio_zona_b to inicio_zona_a
+    if low[indice] < valor_minimo_za
+        valor_minimo_za := low[indice]
+        indice_minimo_za := indice
+
+valor_minimo_zb = 9999999999.9
+indice_minimo_zb = 0
+for indice = 0 to inicio_zona_b
+    if low[indice] < valor_minimo_zb
+        valor_minimo_zb := low[indice]
+        indice_minimo_zb := indice
+
+nuevo_indice_sup = indice_minimo_zb
+y_maxima_sup = 0.0
+for i = indice_minimo_za to indice_minimo_zb
+    y = valor_recta( i, indice_minimo_za, high[indice_minimo_za], indice_minimo_zb, high[indice_minimo_zb] )
+    if y < high[i] and high[i] > y_maxima_sup
+        nuevo_indice_sup := i
+        y_maxima_sup := high[i]
+
+nuevo_indice_inf = indice_minimo_zb
+y_minima_inf = 999999.00
+for i = indice_minimo_za to indice_minimo_zb
+    y = valor_recta( i, indice_minimo_za, low[indice_minimo_za], indice_minimo_zb, low[indice_minimo_zb] )
+    if y > low[i] and low[i] < y_minima_inf
+        nuevo_indice_inf := i
+        y_minima_inf := low[i]
+
+if barstate.islast
+    ls = line.new( bar_index[indice_maximo_za], high[indice_maximo_za], bar_index[indice_maximo_zb], high[indice_maximo_zb], extend = extend.right, color = color.green )
+    li = line.new( bar_index[indice_minimo_za], low[indice_minimo_za], bar_index[indice_minimo_zb], low[indice_minimo_zb], extend = extend.right, color = color.red )
+    lcs = line.new( bar_index[nuevo_indice_sup], high[nuevo_indice_sup], bar_index[indice_minimo_zb], high[indice_minimo_zb], extend = extend.both, color=color.yellow, style=line.style_dashed )
+    lci = line.new( bar_index[nuevo_indice_inf], low[nuevo_indice_inf], bar_index[indice_minimo_zb], low[indice_minimo_zb], extend = extend.both, color=color.yellow, style=line.style_dashed )
+
+    line.delete( ls[1] )
+    line.delete( ls[1] )
+    line.delete( ls[1] )
+    line.delete( ls[1] )
+
+plot(close)

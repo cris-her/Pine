@@ -1,0 +1,32 @@
+//@version=5
+indicator("Bot", overlay=true)
+
+per_rsi = input.int(14, "Periodos RSI")
+per_vol = input.int(14, "Periodios Volumen")
+
+rsi_sv = input.int(70, "Sobreventa")
+rsi_sc = input.int(30, "Sobrecompra")
+
+vol_gat = input.int(70, "Gatillo de volumen")
+
+rsi = ta.rsi(close, per_rsi)
+vol = ta.rsi(volume, per_vol)
+
+// plot(rsi, color=color.purple) // overlay=false
+// plot(vol+100, color=color.blue)
+// h1 = hline(rsi_sv, color=color.gray)
+// h2 = hline(rsi_sc, color=color.gray)
+// h3 = hline(vol_gat + 100, color=color.gray)
+// h4 = hline(100, color=color.gray)
+// fill(h1, h2, color=color.new(color.purple, 90))
+// fill(h3, h4, color=color.new(color.purple, 90))
+// gatillo = (rsi < rsi_sv or rsi > rsi_sc) and vol > vol_gat
+// bgcolor(gatillo ? color.new(color.yellow, 80) : na)
+
+venta = rsi > rsi_sc and vol > vol_gat
+compra = rsi < rsi_sv and vol > vol_gat
+
+plot(venta or compra ? close : na, style=plot.style_circles, linewidth=5, color = compra ? color.green : venta ? color.red: na)
+
+alertcondition(compra, message="Compra {{ticker}}", title="Orden de Compra")
+alertcondition(venta, message="Venta {{ticker}}", title="Orden de Venta")
