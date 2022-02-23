@@ -18,7 +18,7 @@ dineroFinal = 0.0
 q = 0
 
 klines = client.get_historical_klines(
-    symbolTicker, Client.KLINE_INTERVAL_1DAY, "1 year ago UTC")
+    symbolTicker, Client.KLINE_INTERVAL_4HOUR, "1 year ago UTC")
 
 
 def read_candles():
