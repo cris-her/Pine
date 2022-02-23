@@ -9,8 +9,7 @@ from datetime import datetime
 
 
 #CSV_FILE = "input.csv"
-EMA10_LENGTH = 10
-EMA55_LENGTH = 55
+EMA_LENGTH = 10
 EMA_SOURCE = 'close'
 
 candles = []
@@ -26,7 +25,7 @@ dineroFinal = 0.0
 q = 0
 
 klines = client.get_historical_klines(
-    symbolTicker, Client.KLINE_INTERVAL_1DAY, "1 year ago UTC")
+    symbolTicker, Client.KLINE_INTERVAL_4HOUR, "1 year ago UTC")
 
 
 def read_candles():
@@ -88,8 +87,8 @@ if __name__ == '__main__':
     # progress through the array of candles to calculate the indicators for each
     # block of candles
     position = 0
-    while position + EMA10_LENGTH <= len(candles):
-        current_candles = candles[position:(position+EMA10_LENGTH)]
+    while position + EMA_LENGTH <= len(candles):
+        current_candles = candles[position:(position+EMA_LENGTH)]
         current_candles = list(reversed(current_candles))
         calculate(current_candles, EMA_SOURCE)
         position += 1
