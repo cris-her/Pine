@@ -14,11 +14,12 @@ symbolTicker = 'BTCUSDT'
 
 cantCompra = 0
 cantVenta = 0
-dineroFinal = 0.0
+dineroBTC = 0.0
+dineroUSD = 100000.0
 q = 0
 
 klines = client.get_historical_klines(
-    symbolTicker, Client.KLINE_INTERVAL_1DAY, "1 Ene, 2021", "23 Feb, 2022")  # "1 year ago UTC"
+    symbolTicker, Client.KLINE_INTERVAL_1DAY, "1 Ene, 2020", "23 Feb, 2022")  # "1 year ago UTC"
 # Client.KLINE_INTERVAL_4HOUR, "15 Feb, 2021", "23 Feb, 2022"
 # Client.KLINE_INTERVAL_1DAY, "1 Ene, 2021", "23 Feb, 2022"
 
@@ -144,7 +145,10 @@ if __name__ == '__main__':
                 #print("compra  " + str(klines[i][4]))
                 q = q + 1
                 cantCompra = cantCompra + 1
-                dineroFinal = dineroFinal - candle['ema10']*0.99  # *1.00075
+                dineroBTC = dineroUSD / candle['close']
+                dineroUSD = 0.0
+
+                # dineroFinal = dineroFinal - candle['ema10']*0.99  # *1.00075
                 # time.sleep(1)
 
             if (candle['ema10'] < candle['ema55'] and 0 < q <= 1):
@@ -152,9 +156,14 @@ if __name__ == '__main__':
                 #print("venta  " + str(klines[i][4]))
                 q = q - 1
                 cantVenta = cantVenta + 1
-                dineroFinal = dineroFinal + candle['ema10']*1.01  # *0.99925
+                dineroUSD = dineroBTC * candle['close']
+                dineroBTC = 0.0
+                # dineroFinal = dineroFinal + candle['ema10']*1.01  # *0.99925
                 # time.sleep(1)
 
-    print(dineroFinal)
+    print(f"dineroBTC: {dineroBTC}")
+    print(f"dineroUSD: {dineroUSD}")
+    print(f"ganancia: {dineroUSD - 100000.0}")
+    print(f"porcentaje: {((dineroUSD - 100000.0) * 100.0) / 100000.0}")
     print(cantCompra)
     print(cantVenta)
