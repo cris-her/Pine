@@ -4,6 +4,7 @@ from binance.client import Client
 from binance.enums import *
 from datetime import datetime
 
+
 EMA_LENGTH = 10
 EMA_SOURCE = 'close'
 
@@ -18,8 +19,14 @@ dineroBTC = 0.0
 dineroUSD = 100000.0
 q = 0
 
+dt_obj = datetime.strptime('1.1.2019 00:00:00', '%d.%m.%Y %H:%M:%S')
+millisec = dt_obj.timestamp() * 1000
+
+dt_obj2 = datetime.strptime('24.2.2022 00:00:00', '%d.%m.%Y %H:%M:%S')
+millisec2 = dt_obj2.timestamp() * 1000
+
 klines = client.get_historical_klines(
-    symbolTicker, Client.KLINE_INTERVAL_1DAY, "1 Ene, 2020", "23 Feb, 2022")  # "1 year ago UTC"
+    symbolTicker, Client.KLINE_INTERVAL_4HOUR, str(millisec), str(millisec2))  # "1 year ago UTC"
 # Client.KLINE_INTERVAL_4HOUR, "15 Feb, 2021", "23 Feb, 2022"
 # Client.KLINE_INTERVAL_1DAY, "1 Ene, 2021", "23 Feb, 2022"
 
@@ -137,23 +144,29 @@ if __name__ == '__main__':
                 candle['ts'], candle['ema10'], candle['ema55']))
             break
 
+    dt_obj3 = datetime.strptime('23.2.2020 00:00:00', '%d.%m.%Y %H:%M:%S')
+    millisec3 = dt_obj3.timestamp() * 1000
+
     # STRATEGY
     for candle in candles:
         if 'ema55' in candle:
-            if (candle['ema10'] > candle['ema55'] and 0 <= q < 1):
+            if (candle['ema10'] > candle['ema55'] and 0 <= q < 1 and candle['ts'].timestamp() * 1000 >= millisec3):
                 # compra
-                #print("compra  " + str(klines[i][4]))
+                # print("compra  " + str(klines[i][4]))
                 q = q + 1
                 cantCompra = cantCompra + 1
                 dineroBTC = dineroUSD / candle['close']
                 dineroUSD = 0.0
 
+                print(candle['ts'].strftime("%Y-%m-%d %H:%M:%S"))
+                print(candle['ts'].timestamp() * 1000)
+                print(millisec3)
                 # dineroFinal = dineroFinal - candle['ema10']*0.99  # *1.00075
                 # time.sleep(1)
 
             if (candle['ema10'] < candle['ema55'] and 0 < q <= 1):
                 # venta
-                #print("venta  " + str(klines[i][4]))
+                # print("venta  " + str(klines[i][4]))
                 q = q - 1
                 cantVenta = cantVenta + 1
                 dineroUSD = dineroBTC * candle['close']
