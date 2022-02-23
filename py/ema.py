@@ -1,21 +1,14 @@
-import csv
-import re
 from functools import reduce
-from dateutil import parser
 import config
 from binance.client import Client
 from binance.enums import *
 from datetime import datetime
 
-
-#CSV_FILE = "input.csv"
 EMA_LENGTH = 10
 EMA_SOURCE = 'close'
 
 candles = []
 
-# Reads the input file and saves to `candles` all the candles found. Each candle is
-# a dict with the timestamp and the OHLC values.
 client = Client(config.API_KEY, config.API_SECRET, tld='com')
 symbolTicker = 'BTCUSDT'
 
