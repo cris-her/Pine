@@ -18,7 +18,7 @@ dineroFinal = 0.0
 q = 0
 
 klines = client.get_historical_klines(
-    symbolTicker, Client.KLINE_INTERVAL_4HOUR, "1 year ago UTC")
+    symbolTicker, Client.KLINE_INTERVAL_1DAY, "1 year ago UTC")
 
 
 def read_candles():
@@ -94,20 +94,20 @@ if __name__ == '__main__':
     # STRATEGY
     for candle in candles:
         if 'sma' in candle:
-            if (candle['ema'] < candle['close']*0.99 and 0 <= q < 5):
+            if (candle['ema'] < candle['close'] and 0 <= q < 1):
                 # compra
                 #print("compra  " + str(klines[i][4]))
                 q = q + 1
                 cantCompra = cantCompra + 1
-                dineroFinal = dineroFinal - candle['sma']*0.99  # *1.00075
+                dineroFinal = dineroFinal - candle['ema']*0.99  # *1.00075
                 # time.sleep(1)
 
-            if (candle['ema'] > candle['close']*1.01 and 0 < q <= 5):
+            if (candle['ema'] > candle['close'] and 0 < q <= 1):
                 # venta
                 #print("venta  " + str(klines[i][4]))
                 q = q - 1
                 cantVenta = cantVenta + 1
-                dineroFinal = dineroFinal + candle['sma']*1.01  # *0.99925
+                dineroFinal = dineroFinal + candle['ema']*1.01  # *0.99925
                 # time.sleep(1)
 
     print(dineroFinal)
