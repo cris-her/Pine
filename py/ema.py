@@ -13,28 +13,29 @@ compras = []
 ventas = []
 dineroBTC = 0.0
 dineroUSD = 100000.0
-q = 0
 
+longitud_mm_v = 10  # 4  # 10
+longitud_mm_r = 55  # 38  # 55
 sl = 0.0
 tp = 0.0
-en_pausa = 0
+comprado = False
+en_pausa = 0  # := max(en_pausa - 1, 0)
 
-stop_loss = 1000  # 0.2  # Porcentaje de stop loss
-take_profit = 1000  # 29.6  # Porcentaje Take profit
-esperar = 4  # Velas a esperar
+stop_loss = 1000  # 0.2  # 1000  # 0.2  # Porcentaje de stop loss
+take_profit = 1000  # 29.6  # 1000  # 29.6  # Porcentaje Take profit
+esperar = 0  # Velas a esperar
 
 # alcista = (line1 > line2)// and close > line2 and angulo(line1) > a//(ema(close, 10) > ema(close, 55))
 # bajista =  (line1 < line2) //  angulo(line1) < a  // close < line2  // not alcista //
 #comprado = strategy.position_size > 0
-en_pausa = esperar  # := max(en_pausa - 1, 0)
 
 desde_datos = datetime.strptime(
     '1.1.2019 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
 hasta_datos = datetime.now().timestamp() * 1000
 desde_estrategia = datetime.strptime(
-    '23.2.2020 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
+    '23.7.2021 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
 hasta_estrategia = datetime.strptime(
-    '23.2.2022 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
+    '23.12.2021 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
 
 klines1D = client.get_historical_klines(
     symbolTicker, Client.KLINE_INTERVAL_1DAY, str(desde_datos), str(hasta_datos))  # "1 year ago UTC"
@@ -61,31 +62,31 @@ def calculate_sma(candles, source):
     return sma
 
 
-def calculate_ema(candles, source, emaN):
+def calculate_ema(candles, source, emaC):
     target = candles[0]
     previous = candles[1]
 
-    if emaN not in previous or previous[emaN] == None:
+    if emaC not in previous or previous[emaC] == None:
         return calculate_sma(candles, source)
     else:
         multiplier = 2 / (len(candles) + 1)
         ema = (target[source] * multiplier) + \
-            (previous[emaN] * (1 - multiplier))
+            (previous[emaC] * (1 - multiplier))
         # Formula updated from the original one to be clearer, both give the same results. Old formula:
         # ema = ((target[source] - previous['ema']) * multiplier) + previous['ema']
         return ema
 
 
-def calculate(source, length, smaN, emaN, candles):
+def calculate(source, length, smaC, emaC, candles):
     position = 0
     while position + length <= len(candles):
         current_candles = candles[position:(position+length)]
         current_candles = list(reversed(current_candles))
         #calculate(current_candles, EMA_SOURCE)
         sma = calculate_sma(current_candles, source)
-        ema = calculate_ema(current_candles, source, emaN)
-        current_candles[0][smaN] = sma
-        current_candles[0][emaN] = ema
+        ema = calculate_ema(current_candles, source, emaC)
+        current_candles[0][smaC] = sma
+        current_candles[0][emaC] = ema
         position += 1
 
 
@@ -105,25 +106,27 @@ if __name__ == '__main__':
 
     # progress through the array of candles to calculate the indicators for each
     # block of candles
-    calculate('close', 10, 'sma10', 'ema10', candles1D)
-    calculate('close', 55, 'sma55', 'ema55', candles1D)
+    calculate('close', longitud_mm_v, 'smaV', 'emaV', candles1D)
+    calculate('close', longitud_mm_r, 'smaR', 'emaR', candles1D)
+    calculate('close', longitud_mm_v, 'smaV', 'emaV', candles4H)
+    calculate('close', longitud_mm_r, 'smaR', 'emaR', candles4H)
 
-    main_candles = candles1D
+    main_candles = candles4H
     for candle in main_candles:
-        if 'ema55' in candle:
-            print('{}: ema10={} ema55={}'.format(
-                candle['ts'], candle['ema10'], candle['ema55']))
+        if 'emaR' in candle:
+            print('{}: emaV={} emaR={}'.format(
+                candle['ts'], candle['emaV'], candle['emaR']))
             break
 
     # STRATEGY
     for candle in main_candles:
-        if 'ema55' in candle:
+        if 'emaR' in candle:
             if en_pausa > 0:
-                en_pausa = en_pausa - 1
+                en_pausa -= 1
             #:= max(en_pausa - 1, 0)
-            if (candle['ema10'] > candle['ema55'] and 0 <= q < 1 and fecha_valida(candle) and en_pausa == 0):
+            if (not comprado) and (candle['emaV'] > candle['emaR'] and fecha_valida(candle) and en_pausa == 0):
                 # compra
-                q = q + 1
+                comprado = True  # q = q + 1
                 compras.append(candle)
                 dineroBTC = dineroUSD / candle['close']
                 dineroUSD = 0.0
@@ -131,46 +134,61 @@ if __name__ == '__main__':
                 # time.sleep(1)
                 sl = candle['close'] * (1 - stop_loss/100)
                 tp = candle['close'] * (1 + take_profit/100)
+                print(
+                    f"{len(compras)} BUY: {compras[len(compras)-1]['ts']}, CLOSE: {compras[len(compras)-1]['close']}, BTC:{dineroBTC}")
+                continue
 
-            if 0 < q <= 1:
+            if comprado:
                 if candle['close'] <= sl:
                     # salir sl
                     # strategy.close("Compra", comment="SL")
-                    q = q - 1
+                    #q = q - 1
+                    comprado = False
                     ventas.append(candle)
                     dineroUSD = dineroBTC * candle['close']
                     dineroBTC = 0.0
                     en_pausa = esperar
+                    print(
+                        f"{len(compras)} SL: {ventas[len(compras)-1]['ts']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
+                    continue
 
                 if candle['close'] >= tp:
                     # salir tp
                     # strategy.close("Compra", comment="TP")
-                    q = q - 1
+                    #q = q - 1
+                    comprado = False
                     ventas.append(candle)
                     dineroUSD = dineroBTC * candle['close']
                     dineroBTC = 0.0
+                    print(
+                        f"{len(compras)} TP: {ventas[len(compras)-1]['ts']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
+                    continue
 
-                if (candle['ema10'] < candle['ema55']):
+                if (candle['emaV'] < candle['emaR']):
                     # realizar venta x cruce
-                    q = q - 1
+                    #q = q - 1
+                    comprado = False
                     ventas.append(candle)
                     dineroUSD = dineroBTC * candle['close']
                     dineroBTC = 0.0
                     # dineroFinal = dineroFinal + candle['ema10']*1.01  # *0.99925
                     # time.sleep(1)
+                    print(
+                        f"{len(compras)} SELL: {ventas[len(compras)-1]['ts']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
+                    continue
 
                 if not fecha_valida(candle):
                     # realizar venta x finalizacion periodo
                     # strategy.close("Compra", comment="Venta x fin")
-                    q = q - 1
+                    #q = q - 1
+                    comprado = False
                     ventas.append(candle)
                     dineroUSD = dineroBTC * candle['close']
                     dineroBTC = 0.0
+                    print(
+                        f"{len(compras)} FIN: {ventas[len(compras)-1]['ts']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
+                    break
 
-    for o in range(len(compras)):
-        print(f"{o + 1} BUY: {compras[o]['ts']} - {compras[o]['close']}")
-        if o < len(ventas):
-            print(f"{o + 1} SELL: {ventas[o]['ts']} - {ventas[o]['close']}")
     print('--------------------')
     print(f"BTC: {dineroBTC}")
     print(f"USD: {dineroUSD}")
