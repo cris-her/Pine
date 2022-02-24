@@ -123,11 +123,14 @@ if __name__ == '__main__':
                 # dineroFinal = dineroFinal + candle['ema10']*1.01  # *0.99925
                 # time.sleep(1)
 
-    print(f"Buys: {compras}")
-    print(f"Sells: {ventas}")
+    for o in range(len(compras)):
+        print(f"BUY: {compras[o]['ts']} - {compras[o]['close']}")
+        print(f"SELL: {ventas[o]['ts']} - {ventas[o]['close']}")
+    print('--------------------')
     print(f"BTC: {dineroBTC}")
     print(f"USD: {dineroUSD}")
     print(f"Net profit: {dineroUSD - 100000.0}")
     print(f"%: {((dineroUSD - 100000.0) * 100.0) / 100000.0}")
     print(f"Open trades: {len(compras)}")
     print(f"Closed trades: {len(ventas)}")
+    print('--------------------')
