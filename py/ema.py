@@ -4,36 +4,34 @@ from binance.client import Client
 from binance.enums import *
 from datetime import datetime
 
-
-EMA_LENGTH = 10
-EMA_SOURCE = 'close'
-
-candles = []
-
 client = Client(config.API_KEY, config.API_SECRET, tld='com')
 symbolTicker = 'BTCUSDT'
+candles1D = []
+candles4H = []
 
-cantCompra = 0
-cantVenta = 0
+compras = []
+ventas = []
 dineroBTC = 0.0
 dineroUSD = 100000.0
 q = 0
 
-dt_obj = datetime.strptime('1.1.2019 00:00:00', '%d.%m.%Y %H:%M:%S')
-millisec = dt_obj.timestamp() * 1000
+desde_datos = datetime.strptime(
+    '1.1.2019 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
+hasta_datos = datetime.now().timestamp() * 1000
+desde_estrategia = datetime.strptime(
+    '23.2.2020 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
+hasta_estrategia = datetime.strptime(
+    '23.2.2022 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
 
-dt_obj2 = datetime.strptime('24.2.2022 00:00:00', '%d.%m.%Y %H:%M:%S')
-millisec2 = dt_obj2.timestamp() * 1000
-
-klines = client.get_historical_klines(
-    symbolTicker, Client.KLINE_INTERVAL_1DAY, str(millisec), str(millisec2))  # "1 year ago UTC"
+klines1D = client.get_historical_klines(
+    symbolTicker, Client.KLINE_INTERVAL_1DAY, str(desde_datos), str(hasta_datos))  # "1 year ago UTC"
+klines4H = client.get_historical_klines(
+    symbolTicker, Client.KLINE_INTERVAL_4HOUR, str(desde_datos), str(hasta_datos))
 # Client.KLINE_INTERVAL_4HOUR, "15 Feb, 2021", "23 Feb, 2022"
 # Client.KLINE_INTERVAL_1DAY, "1 Ene, 2021", "23 Feb, 2022"
 
 
-def read_candles():
-    print(len(klines))
-
+def read_candles(klines, candles):
     for i in range(len(klines)):
         candles.append({
             'ts': datetime.fromtimestamp(klines[i][0]/1000),
@@ -43,41 +41,29 @@ def read_candles():
             'close': float(klines[i][4])
         })
 
-# Calculates the SMA of an array of candles using the `source` price.
-
 
 def calculate_sma(candles, source):
-    length = len(candles)
     sum = reduce((lambda last, x: {source: last[source] + x[source]}), candles)
-    sma = sum[source] / length
+    sma = sum[source] / len(candles)
     return sma
-
-# Calculates the EMA of an array of candles using the `source` price.
 
 
 def calculate_ema(candles, source, emaN):
-    length = len(candles)
     target = candles[0]
     previous = candles[1]
 
-    # if there is no previous EMA calculated, then EMA=SMA
     if emaN not in previous or previous[emaN] == None:
         return calculate_sma(candles, source)
-
     else:
-        # multiplier: (2 / (length + 1))
-        # EMA: (close - EMA(previous)) x multiplier + EMA(previous)
-        multiplier = 2 / (length + 1)
-
+        multiplier = 2 / (len(candles) + 1)
         ema = (target[source] * multiplier) + \
             (previous[emaN] * (1 - multiplier))
         # Formula updated from the original one to be clearer, both give the same results. Old formula:
         # ema = ((target[source] - previous['ema']) * multiplier) + previous['ema']
-
         return ema
 
 
-def calculate(source, length, smaN, emaN):
+def calculate(source, length, smaN, emaN, candles):
     position = 0
     while position + length <= len(candles):
         current_candles = candles[position:(position+length)]
@@ -90,54 +76,58 @@ def calculate(source, length, smaN, emaN):
         position += 1
 
 
+def fecha_valida(candle):
+    return candle['ts'].timestamp() * \
+        1000 >= desde_estrategia and candle['ts'].timestamp(
+    ) * 1000 <= hasta_estrategia
+
+
 if __name__ == '__main__':
-    read_candles()
-    # print(candles)
+    print('--------------------')
+    read_candles(klines1D, candles1D)
+    read_candles(klines4H, candles4H)
+    print(
+        f'1D Candles: {len(klines1D)}, 4H Candles: {len(klines4H)}')
+    print('--------------------')
 
     # progress through the array of candles to calculate the indicators for each
     # block of candles
-    calculate(EMA_SOURCE, 10, 'sma10', 'ema10')
-    calculate(EMA_SOURCE, 55, 'sma55', 'ema55')
+    calculate('close', 10, 'sma10', 'ema10', candles1D)
+    calculate('close', 55, 'sma55', 'ema55', candles1D)
 
-    for candle in candles:
+    main_candles = candles1D
+    for candle in main_candles:
         if 'ema55' in candle:
             print('{}: ema10={} ema55={}'.format(
                 candle['ts'], candle['ema10'], candle['ema55']))
             break
 
-    dt_obj3 = datetime.strptime('23.2.2020 00:00:00', '%d.%m.%Y %H:%M:%S')
-    millisec3 = dt_obj3.timestamp() * 1000
-
     # STRATEGY
-    for candle in candles:
+    for candle in main_candles:
         if 'ema55' in candle:
-            if (candle['ema10'] > candle['ema55'] and 0 <= q < 1 and candle['ts'].timestamp() * 1000 >= millisec3):
+            if (candle['ema10'] > candle['ema55'] and 0 <= q < 1 and fecha_valida(candle)):
                 # compra
-                # print("compra  " + str(klines[i][4]))
                 q = q + 1
-                cantCompra = cantCompra + 1
+                compras.append(candle)
                 dineroBTC = dineroUSD / candle['close']
                 dineroUSD = 0.0
-
-                print(candle['ts'].strftime("%Y-%m-%d %H:%M:%S"))
-                print(candle['ts'].timestamp() * 1000)
-                print(millisec3)
                 # dineroFinal = dineroFinal - candle['ema10']*0.99  # *1.00075
                 # time.sleep(1)
 
             if (candle['ema10'] < candle['ema55'] and 0 < q <= 1):
                 # venta
-                # print("venta  " + str(klines[i][4]))
                 q = q - 1
-                cantVenta = cantVenta + 1
+                ventas.append(candle)
                 dineroUSD = dineroBTC * candle['close']
                 dineroBTC = 0.0
                 # dineroFinal = dineroFinal + candle['ema10']*1.01  # *0.99925
                 # time.sleep(1)
 
-    print(f"dineroBTC: {dineroBTC}")
-    print(f"dineroUSD: {dineroUSD}")
-    print(f"ganancia: {dineroUSD - 100000.0}")
-    print(f"porcentaje: {((dineroUSD - 100000.0) * 100.0) / 100000.0}")
-    print(cantCompra)
-    print(cantVenta)
+    print(f"Buys: {compras}")
+    print(f"Sells: {ventas}")
+    print(f"BTC: {dineroBTC}")
+    print(f"USD: {dineroUSD}")
+    print(f"Net profit: {dineroUSD - 100000.0}")
+    print(f"%: {((dineroUSD - 100000.0) * 100.0) / 100000.0}")
+    print(f"Open trades: {len(compras)}")
+    print(f"Closed trades: {len(ventas)}")
