@@ -14,16 +14,16 @@ ventas = []
 dineroBTC = 0.0
 dineroUSD = 100000.0
 
-longitud_mm_v = 10  # 4  # 10
-longitud_mm_r = 55  # 38  # 55
+longitud_mm_v = 4  # 4  # 10
+longitud_mm_r = 38  # 38  # 55
 sl = 0.0
 tp = 0.0
 comprado = False
 en_pausa = 0  # := max(en_pausa - 1, 0)
 
-stop_loss = 1000  # 0.2  # 1000  # 0.2  # Porcentaje de stop loss
-take_profit = 1000  # 29.6  # 1000  # 29.6  # Porcentaje Take profit
-esperar = 0  # Velas a esperar
+stop_loss = 0.2  # 0.2  # 1000  # 0.2  # Porcentaje de stop loss
+take_profit = 29.6  # 29.6  # 1000  # 29.6  # Porcentaje Take profit
+esperar = 4  # Velas a esperar
 
 # alcista = (line1 > line2)// and close > line2 and angulo(line1) > a//(ema(close, 10) > ema(close, 55))
 # bajista =  (line1 < line2) //  angulo(line1) < a  // close < line2  // not alcista //
@@ -33,7 +33,7 @@ desde_datos = datetime.strptime(
     '1.1.2019 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
 hasta_datos = datetime.now().timestamp() * 1000
 desde_estrategia = datetime.strptime(
-    '23.7.2021 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
+    '1.12.2020 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
 hasta_estrategia = datetime.strptime(
     '23.12.2021 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
 
