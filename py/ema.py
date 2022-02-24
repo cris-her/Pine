@@ -15,6 +15,19 @@ dineroBTC = 0.0
 dineroUSD = 100000.0
 q = 0
 
+sl = 0.0
+tp = 0.0
+en_pausa = 0
+
+stop_loss = 1000  # 0.2  # Porcentaje de stop loss
+take_profit = 1000  # 29.6  # Porcentaje Take profit
+esperar = 4  # Velas a esperar
+
+# alcista = (line1 > line2)// and close > line2 and angulo(line1) > a//(ema(close, 10) > ema(close, 55))
+# bajista =  (line1 < line2) //  angulo(line1) < a  // close < line2  // not alcista //
+#comprado = strategy.position_size > 0
+en_pausa = esperar  # := max(en_pausa - 1, 0)
+
 desde_datos = datetime.strptime(
     '1.1.2019 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
 hasta_datos = datetime.now().timestamp() * 1000
@@ -105,7 +118,10 @@ if __name__ == '__main__':
     # STRATEGY
     for candle in main_candles:
         if 'ema55' in candle:
-            if (candle['ema10'] > candle['ema55'] and 0 <= q < 1 and fecha_valida(candle)):
+            if en_pausa > 0:
+                en_pausa = en_pausa - 1
+            #:= max(en_pausa - 1, 0)
+            if (candle['ema10'] > candle['ema55'] and 0 <= q < 1 and fecha_valida(candle) and en_pausa == 0):
                 # compra
                 q = q + 1
                 compras.append(candle)
@@ -113,15 +129,43 @@ if __name__ == '__main__':
                 dineroUSD = 0.0
                 # dineroFinal = dineroFinal - candle['ema10']*0.99  # *1.00075
                 # time.sleep(1)
+                sl = candle['close'] * (1 - stop_loss/100)
+                tp = candle['close'] * (1 + take_profit/100)
 
-            if (candle['ema10'] < candle['ema55'] and 0 < q <= 1):
-                # venta
-                q = q - 1
-                ventas.append(candle)
-                dineroUSD = dineroBTC * candle['close']
-                dineroBTC = 0.0
-                # dineroFinal = dineroFinal + candle['ema10']*1.01  # *0.99925
-                # time.sleep(1)
+            if 0 < q <= 1:
+                if candle['close'] <= sl:
+                    # salir sl
+                    # strategy.close("Compra", comment="SL")
+                    q = q - 1
+                    ventas.append(candle)
+                    dineroUSD = dineroBTC * candle['close']
+                    dineroBTC = 0.0
+                    en_pausa = esperar
+
+                if candle['close'] >= tp:
+                    # salir tp
+                    # strategy.close("Compra", comment="TP")
+                    q = q - 1
+                    ventas.append(candle)
+                    dineroUSD = dineroBTC * candle['close']
+                    dineroBTC = 0.0
+
+                if (candle['ema10'] < candle['ema55']):
+                    # realizar venta x cruce
+                    q = q - 1
+                    ventas.append(candle)
+                    dineroUSD = dineroBTC * candle['close']
+                    dineroBTC = 0.0
+                    # dineroFinal = dineroFinal + candle['ema10']*1.01  # *0.99925
+                    # time.sleep(1)
+
+                if not fecha_valida(candle):
+                    # realizar venta x finalizacion periodo
+                    # strategy.close("Compra", comment="Venta x fin")
+                    q = q - 1
+                    ventas.append(candle)
+                    dineroUSD = dineroBTC * candle['close']
+                    dineroBTC = 0.0
 
     for o in range(len(compras)):
         print(f"{o + 1} BUY: {compras[o]['ts']} - {compras[o]['close']}")
