@@ -124,8 +124,9 @@ if __name__ == '__main__':
                 # time.sleep(1)
 
     for o in range(len(compras)):
-        print(f"BUY: {compras[o]['ts']} - {compras[o]['close']}")
-        print(f"SELL: {ventas[o]['ts']} - {ventas[o]['close']}")
+        print(f"{o + 1} BUY: {compras[o]['ts']} - {compras[o]['close']}")
+        if o < len(ventas):
+            print(f"{o + 1} SELL: {ventas[o]['ts']} - {ventas[o]['close']}")
     print('--------------------')
     print(f"BTC: {dineroBTC}")
     print(f"USD: {dineroUSD}")
