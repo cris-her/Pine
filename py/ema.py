@@ -26,7 +26,7 @@ dt_obj2 = datetime.strptime('24.2.2022 00:00:00', '%d.%m.%Y %H:%M:%S')
 millisec2 = dt_obj2.timestamp() * 1000
 
 klines = client.get_historical_klines(
-    symbolTicker, Client.KLINE_INTERVAL_4HOUR, str(millisec), str(millisec2))  # "1 year ago UTC"
+    symbolTicker, Client.KLINE_INTERVAL_1DAY, str(millisec), str(millisec2))  # "1 year ago UTC"
 # Client.KLINE_INTERVAL_4HOUR, "15 Feb, 2021", "23 Feb, 2022"
 # Client.KLINE_INTERVAL_1DAY, "1 Ene, 2021", "23 Feb, 2022"
 
@@ -55,13 +55,13 @@ def calculate_sma(candles, source):
 # Calculates the EMA of an array of candles using the `source` price.
 
 
-def calculate_ema(candles, source):
+def calculate_ema(candles, source, emaN):
     length = len(candles)
     target = candles[0]
     previous = candles[1]
 
     # if there is no previous EMA calculated, then EMA=SMA
-    if 'ema10' not in previous or previous['ema10'] == None:
+    if emaN not in previous or previous[emaN] == None:
         return calculate_sma(candles, source)
 
     else:
@@ -70,47 +70,24 @@ def calculate_ema(candles, source):
         multiplier = 2 / (length + 1)
 
         ema = (target[source] * multiplier) + \
-            (previous['ema10'] * (1 - multiplier))
+            (previous[emaN] * (1 - multiplier))
         # Formula updated from the original one to be clearer, both give the same results. Old formula:
         # ema = ((target[source] - previous['ema']) * multiplier) + previous['ema']
 
         return ema
 
 
-def calculate_ema55(candles, source):
-    length = len(candles)
-    target = candles[0]
-    previous = candles[1]
-
-    # if there is no previous EMA calculated, then EMA=SMA
-    if 'ema55' not in previous or previous['ema55'] == None:
-        return calculate_sma(candles, source)
-
-    else:
-        # multiplier: (2 / (length + 1))
-        # EMA: (close - EMA(previous)) x multiplier + EMA(previous)
-        multiplier = 2 / (length + 1)
-
-        ema = (target[source] * multiplier) + \
-            (previous['ema55'] * (1 - multiplier))
-        # Formula updated from the original one to be clearer, both give the same results. Old formula:
-        # ema = ((target[source] - previous['ema']) * multiplier) + previous['ema']
-
-        return ema
-
-
-def calculate(candles, source):
-    sma10 = calculate_sma(candles, source)
-    ema10 = calculate_ema(candles, source)
-    candles[0]['sma10'] = sma10
-    candles[0]['ema10'] = ema10
-
-
-def calculate55(candles, source):
-    sma55 = calculate_sma(candles, source)
-    ema55 = calculate_ema55(candles, source)
-    candles[0]['sma55'] = sma55
-    candles[0]['ema55'] = ema55
+def calculate(source, length, smaN, emaN):
+    position = 0
+    while position + length <= len(candles):
+        current_candles = candles[position:(position+length)]
+        current_candles = list(reversed(current_candles))
+        #calculate(current_candles, EMA_SOURCE)
+        sma = calculate_sma(current_candles, source)
+        ema = calculate_ema(current_candles, source, emaN)
+        current_candles[0][smaN] = sma
+        current_candles[0][emaN] = ema
+        position += 1
 
 
 if __name__ == '__main__':
@@ -119,24 +96,8 @@ if __name__ == '__main__':
 
     # progress through the array of candles to calculate the indicators for each
     # block of candles
-
-    position = 0
-    while position + EMA_LENGTH <= len(candles):
-        current_candles = candles[position:(position+EMA_LENGTH)]
-        current_candles = list(reversed(current_candles))
-        calculate(current_candles, EMA_SOURCE)
-        position += 1
-
-    # print(candles)
-
-    position55 = 0
-    while position55 + 55 <= len(candles):
-        current_candles55 = candles[position55:(position55+55)]
-        current_candles55 = list(reversed(current_candles55))
-        calculate55(current_candles55, EMA_SOURCE)
-        position55 += 1
-
-    # print(candles)
+    calculate(EMA_SOURCE, 10, 'sma10', 'ema10')
+    calculate(EMA_SOURCE, 55, 'sma55', 'ema55')
 
     for candle in candles:
         if 'ema55' in candle:
