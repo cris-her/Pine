@@ -125,6 +125,10 @@ if __name__ == '__main__':
                 en_pausa -= 1
             #:= max(en_pausa - 1, 0)
             if (not comprado) and (candle['emaV'] > candle['emaR'] and fecha_valida(candle) and en_pausa == 0):
+                candle1D = next(filter(lambda candle1D: str(candle1D['ts'])[
+                                0:10] == str(candle['ts'])[0:10], candles1D), None)
+                if candle1D['emaV'] < candle1D['emaR'] and candle1D['close'] < candle1D['emaR']:
+                    continue
                 # compra
                 comprado = True  # q = q + 1
                 compras.append(candle)
