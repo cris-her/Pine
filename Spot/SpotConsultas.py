@@ -44,3 +44,14 @@ class SpotConsultas(Binance):
             if item["asset"] in ticker:
                 return float(item["free"])
         return 0.0
+
+    def Obtener1000Klines(self, simbolo, intervalo, desde, hasta):
+        endPoint = "https://api.binance.com/api/v3/klines"
+        ticker = simbolo.upper()
+        parametros = "symbol=" + ticker
+        parametros += "&interval=" + intervalo
+        parametros += "&startTime=" + str(int(desde))
+        parametros += "&endTime=" + str(int(hasta))
+        parametros += "&limit=1000"
+        r = requests.get(endPoint, params=parametros)
+        return r.json()

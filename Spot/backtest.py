@@ -1,10 +1,8 @@
 from functools import reduce
-import config
-from binance.client import Client
-from binance.enums import *
+from SpotConsultas import SpotConsultas as Consultas
 from datetime import datetime
 
-client = Client(config.API_KEY, config.API_SECRET, tld='com')
+c = Consultas()
 symbolTicker = 'BTCUSDT'
 candles1D = []
 candles4H = []
@@ -30,29 +28,23 @@ esperar = 4  # Velas a esperar
 #comprado = strategy.position_size > 0
 
 desde_datos = datetime.strptime(
-    '1.1.2019 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
+    '31.12.2018 18:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
 hasta_datos = datetime.now().timestamp() * 1000
 desde_estrategia = datetime.strptime(
     '1.12.2020 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
 hasta_estrategia = datetime.strptime(
     '23.12.2021 00:00:00', '%d.%m.%Y %H:%M:%S').timestamp() * 1000
 
-klines1D = client.get_historical_klines(
-    symbolTicker, Client.KLINE_INTERVAL_1DAY, str(desde_datos), str(hasta_datos))  # "1 year ago UTC"
-klines4H = client.get_historical_klines(
-    symbolTicker, Client.KLINE_INTERVAL_4HOUR, str(desde_datos), str(hasta_datos))
-# Client.KLINE_INTERVAL_4HOUR, "15 Feb, 2021", "23 Feb, 2022"
-# Client.KLINE_INTERVAL_1DAY, "1 Ene, 2021", "23 Feb, 2022"
-
 
 def read_candles(klines, candles):
     for i in range(len(klines)):
         candles.append({
-            'ts': datetime.fromtimestamp(klines[i][0]/1000),
+            'otime': datetime.fromtimestamp(klines[i][0]/1000),
             'open': float(klines[i][1]),
             'high': float(klines[i][2]),
             'low': float(klines[i][3]),
-            'close': float(klines[i][4])
+            'close': float(klines[i][4]),
+            'ctime': datetime.fromtimestamp(klines[i][6]/1000),
         })
 
 
@@ -91,12 +83,27 @@ def calculate(source, length, smaC, emaC, candles):
 
 
 def fecha_valida(candle):
-    return candle['ts'].timestamp() * \
-        1000 >= desde_estrategia and candle['ts'].timestamp(
+    return candle['otime'].timestamp() * \
+        1000 >= desde_estrategia and candle['otime'].timestamp(
     ) * 1000 <= hasta_estrategia
 
 
+def ObtenerAllKlines(simbolo, intervalo, desde, hasta):
+    klines = c.Obtener1000Klines(simbolo, intervalo, desde, hasta)
+    while True:
+        desde = klines[-1][6]
+        tempKlines = c.Obtener1000Klines(simbolo, intervalo, desde, hasta)
+        if tempKlines == []:
+            break
+        for i in tempKlines:
+            klines.append(i)
+
+    return klines
+
+
 if __name__ == '__main__':
+    klines1D = ObtenerAllKlines(symbolTicker, "1d", desde_datos, hasta_datos)
+    klines4H = ObtenerAllKlines(symbolTicker, "4h", desde_datos, hasta_datos)
     print('--------------------')
     read_candles(klines1D, candles1D)
     read_candles(klines4H, candles4H)
@@ -115,7 +122,7 @@ if __name__ == '__main__':
     for candle in main_candles:
         if 'emaR' in candle:
             print('{}: emaV={} emaR={}'.format(
-                candle['ts'], candle['emaV'], candle['emaR']))
+                candle['otime'], candle['emaV'], candle['emaR']))
             break
 
     # STRATEGY
@@ -125,8 +132,8 @@ if __name__ == '__main__':
                 en_pausa -= 1
             #:= max(en_pausa - 1, 0)
             if (not comprado) and (candle['emaV'] > candle['emaR'] and fecha_valida(candle) and en_pausa == 0):
-                candle1D = next(filter(lambda candle1D: str(candle1D['ts'])[
-                                0:10] == str(candle['ts'])[0:10], candles1D), None)
+                candle1D = next(filter(lambda candle1D: str(candle1D['otime'])[
+                                0:10] == str(candle['otime'])[0:10], candles1D), None)
                 if candle1D['emaV'] < candle1D['emaR'] and candle1D['close'] < candle1D['emaR']:
                     continue
                 # compra
@@ -139,7 +146,7 @@ if __name__ == '__main__':
                 sl = candle['close'] * (1 - stop_loss/100)
                 tp = candle['close'] * (1 + take_profit/100)
                 print(
-                    f"{len(compras)} BUY: {compras[len(compras)-1]['ts']}, CLOSE: {compras[len(compras)-1]['close']}, BTC:{dineroBTC}")
+                    f"{len(compras)} BUY: {compras[len(compras)-1]['otime']}, CLOSE: {compras[len(compras)-1]['close']}, BTC:{dineroBTC}")
                 continue
 
             if comprado:
@@ -153,7 +160,7 @@ if __name__ == '__main__':
                     dineroBTC = 0.0
                     en_pausa = esperar
                     print(
-                        f"{len(compras)} SL: {ventas[len(compras)-1]['ts']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
+                        f"{len(compras)} SL: {ventas[len(compras)-1]['otime']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
                     continue
 
                 if candle['close'] >= tp:
@@ -165,7 +172,7 @@ if __name__ == '__main__':
                     dineroUSD = dineroBTC * candle['close']
                     dineroBTC = 0.0
                     print(
-                        f"{len(compras)} TP: {ventas[len(compras)-1]['ts']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
+                        f"{len(compras)} TP: {ventas[len(compras)-1]['otime']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
                     continue
 
                 if (candle['emaV'] < candle['emaR']):
@@ -178,7 +185,7 @@ if __name__ == '__main__':
                     # dineroFinal = dineroFinal + candle['ema10']*1.01  # *0.99925
                     # time.sleep(1)
                     print(
-                        f"{len(compras)} SELL: {ventas[len(compras)-1]['ts']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
+                        f"{len(compras)} SELL: {ventas[len(compras)-1]['otime']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
                     continue
 
                 if not fecha_valida(candle):
@@ -190,7 +197,7 @@ if __name__ == '__main__':
                     dineroUSD = dineroBTC * candle['close']
                     dineroBTC = 0.0
                     print(
-                        f"{len(compras)} FIN: {ventas[len(compras)-1]['ts']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
+                        f"{len(compras)} FIN: {ventas[len(compras)-1]['otime']}, CLOSE: {ventas[len(compras)-1]['close']}, USD:{dineroUSD}")
                     break
 
     print('--------------------')

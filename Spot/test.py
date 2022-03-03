@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 from SpotConsultas import SpotConsultas as Consultas
 from SpotOrdenes import SpotOrdenes as Ordenes
@@ -6,11 +7,11 @@ c = Consultas()
 #operaciones = c.ObtenerOperaciones("ETHUSDT", 5)
 # print(json.dumps(operaciones))
 
-#cuenta = c.ObtenerCuentaGeneral()
-# print(json.dumps(cuenta))
+cuenta = c.ObtenerCuentaGeneral()
+print(json.dumps(cuenta))
 
-cantidad = c.ObtenerPosicion("ETH")
-print(cantidad)
+#cantidad = c.ObtenerPosicion("ETH")
+# print(cantidad)
 
 '''
 balance = c.ObtenerBalance()
@@ -27,7 +28,6 @@ o = Ordenes()
 #o.CerrarCompraMarket("ETHUSDT", cantidad)
 # if cantidad < 0:
 #o.CerrarVentaMarket("ETHUSDT", -cantidad)
-
 
 '''
 from SpotBot import SpotBot
