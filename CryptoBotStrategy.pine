@@ -1,6 +1,6 @@
 //@version=4
 strategy("CryptoBot", overlay=true) // 371.63%, 4H
-//ATR
+// temporalidad 2 horas 
 //
 normalizacion = input(220, title="normalizacion") // configuracion de graficos - bloquear la relacion precio/barra
 a = input(0.0, title="angulo")
@@ -12,88 +12,21 @@ angulo(y) =>
     atan( pendiente(y) ) * 180 / acos(-1) * normalizacion
 
 // EMAS
-longitud_mm_v = input(4, title="Longitud media movil Verde")
-longitud_mm_r = input(38, title="Longitud media movil Roja")
+longitud_mm_v = input(10, title="Longitud media movil Verde")
+longitud_mm_r = input(55, title="Longitud media movil Roja")
 line1=ema(close, longitud_mm_v)
 line2=ema(close, longitud_mm_r)
-p1 = plot(line1)
-p2 = plot(line2)
+var maxprependiente = 0
+p1 = plot(line1, color=color.green)
+p2 = plot(line2, color=color.red)
 fill(p1, p2, color = line1 > line2 ? color.new(color.green, 0) :  color.new(color.red, 0) )
 
-
-// VOLUME
-// plot(volume+30000, "Volume columns", color.gray, style = plot.style_columns)
-// plot(30500)
-
-
-// VP
-velas = input(75, title="Cantidad de velas", maxval = 1000)
-filas = input(50, title="Filas", maxval = 500)
-
-var etiquetas = array.new_label(filas)
-var volumen = array.new_float(filas)
-
-limpiar_etiquetas() => 
-    cantidad = array.size(etiquetas)
-    if cantidad > 0
-        for r = 0 to cantidad -1
-            label.delete(array.get(etiquetas, r))
-        array.clear(etiquetas)
-
-inicializar_volumen() =>
-    for r = 0 to filas -1
-        array.set(volumen, r, 0.0)
-
-obtenerMaximo() =>
-    m = 0.0
-    p = 0
-    for r = 0 to filas -1
-        if array.get(volumen, r) > m
-            m := array.get(volumen, r)
-            p := r
-        
-    [p,m]
-
-line linea_maximo = na
-line linea_minimo = na
-
-
-barra = ""
-maximo = highest(velas)
-minimo = lowest(velas)
-
-if barstate.islast
-    limpiar_etiquetas()
-    inicializar_volumen()
-
-    rango = maximo - minimo
-    delta = rango / filas
-    
-    for v = 0 to velas -1
-        valor = close[v] - minimo
-        p = round(valor / delta) -1
-        previo = array.get(volumen, p)
-        array.set(volumen, p, previo + volume[v])
-    
-    [posicion, valorMaximo] = obtenerMaximo()
-    
-    for f = 0 to filas -1
-        cant = round(array.get(volumen, f) * 100/ valorMaximo)
-    
-        eti = label.new(time_close, minimo + delta * f, "", xloc=xloc.bar_time, yloc=yloc.price, color = f == posicion ? color.orange : color.gray, textcolor=color.white, style=label.style_label_left, size=size.auto, tooltip=tostring(cant) + "%")
-        
-        barra := ""
-        for r = 0 to cant * 2
-            barra := barra + "#"
-        label.set_text(eti,barra)
-        array.push(etiquetas, eti)
-        
-    linea_maximo := line.new(bar_index[velas], maximo, bar_index[0], maximo, color=color.yellow, style=line.style_dashed)
-    linea_minimo := line.new(bar_index[velas], minimo, bar_index[0], minimo, color=color.yellow, style=line.style_dashed)
-    
-    line.delete(linea_maximo[1])
-    line.delete(linea_minimo[1])
-    
+periodoM = input(120, title="periodoM")
+velas = input(15, title="velas")
+maximos = highest(high, periodoM)
+minimos = lowest(low, periodoM)
+plot(maximos, color=color.red, linewidth=5)
+plot(minimos, color=color.green, linewidth=5)
     
 // STRATEGY
 var SL = 0.0
@@ -101,16 +34,16 @@ var TP = 0.0
 var en_pausa = 0
 
 // 0.4 cake
-stop_loss = input(defval=0.2, title="Porcentaje Stop loss", type=input.float, step=0.2) 
-take_profit = input(defval=29.6, title="Porcentaje Take profit", type=input.float, step=0.2)
-esperar = input(defval=4, title="Velas a esperar")
+stop_loss = input(defval=50, title="Porcentaje Stop loss", type=input.float, step=0.2) 
+take_profit = input(defval=50, title="Porcentaje Take profit", type=input.float, step=0.2)
+esperar = input(defval=7, title="Velas a esperar")
 
 // desde
-desde_a = input(2020, title="Desde Año")
-desde_m = input(10, title="Desde Mes", minval=1, maxval=12)
+desde_a = input(2022, title="Desde Año")
+desde_m = input(1, title="Desde Mes", minval=1, maxval=12)
 desde_d = input(1, title="Desde Dia", minval=1, maxval=31)
 // hasta
-hasta_a = input(2030, title="Hasta Año")
+hasta_a = input(2023, title="Hasta Año")
 hasta_m = input(1, title="Hasta Mes", minval=1, maxval=12)
 hasta_d = input(1, title="Hasta Dia", minval=1, maxval=31)
 
@@ -119,12 +52,30 @@ FechaValida() =>
     hasta = time <= timestamp(syminfo.timezone, hasta_a, hasta_m, hasta_d, 0, 0)
     desde and hasta
 
-alcista = (line1 > line2)// and close > line2 and angulo(line1) > a//(ema(close, 10) > ema(close, 55))  
-bajista =  (line1 < line2) //  angulo(line1) < a  // close < line2  // not alcista //
+
+
+
+//plot(venta or compra ? close : na, style=plot.style_circles, linewidth=5, color = compra ? color.green : venta ? color.red: na)
+//@version=4
+// study("Media apertura-cierre",overlay=false)
+//difclose10 = (close-line1[0])*5
+difclose55venta = (close-line2[0])*5
+difclose55compra = (line2[0]-close)*5
+
+plot(close, color=color.white, linewidth=5)
+
+//plot( difclose10, style=plot.style_histogram )
+rojo = difclose55venta[0] < difclose55venta[1] and pendiente(close) < 0 and (line1 > line2)// and 
+verde = difclose55compra[0] < difclose55compra[1] and pendiente(close) > 0 and (line1 < line2)//  and
+plot(rojo or verde ? close : na, style=plot.style_circles, linewidth=9, color = verde ? color.blue : rojo ? color.red: na)
+//plot( (open-close) / 2 )
+
+compra = verde and low == minimos[0]//verde //  and minimos[0] > minimos[1] //// and close > line2 and angulo(line1) > a//(ema(close, 10) > ema(close, 55))  
+venta =  rojo and high == maximos[0]//rojo//and maximos[0] < maximos[1] // //  angulo(line1) < a  // close < line2  // not alcista //
 comprado = strategy.position_size > 0
 en_pausa := max(en_pausa -1, 0)
 
-if ( not comprado and alcista and FechaValida() and en_pausa == 0 )
+if ( not comprado and compra and FechaValida() and en_pausa == 0 )
     // realizar compra
     cantidad = round(strategy.equity / close)
     strategy.entry("Compra", strategy.long, cantidad)
@@ -141,7 +92,7 @@ if comprado
     if close >= TP
         strategy.close("Compra", comment="TP")
         
-    if bajista
+    if venta
         // realizar venta x cruce
         strategy.close("Compra", comment="Venta")
         
