@@ -1,0 +1,129 @@
+//@version=4
+study("CryptoBotK", overlay=true) // 371.63%, 4H
+// temporalidad 2 horas 
+//
+normalizacion = input(220, title="normalizacion") // configuracion de graficos - bloquear la relacion precio/barra
+a = input(0.0, title="angulo")
+
+pendiente(y) =>
+    y / y[1] -1
+
+angulo(y) =>
+    atan( pendiente(y) ) * 180 / acos(-1) * normalizacion
+
+//mianguloV = input(10, title="mianguloV")
+//mianguloR = input(55, title="mianguloR")
+// EMAS
+longitud_mm_v = input(10, title="Longitud media movil Verde")
+longitud_mm_r = input(55, title="Longitud media movil Roja")
+line1=ema(close, longitud_mm_v)
+line2=ema(close, longitud_mm_r)
+var maxprependiente = 0
+p1 = plot(line1, color=color.green)
+p2 = plot(line2, color=color.red)
+fill(p1, p2, color = line1 > line2 ? color.new(color.green, 0) :  color.new(color.red, 0) )
+
+periodoMR = input(120, title="periodoMR")
+periodoMV = input(110, title="periodoMV")
+velasV = input(1, title="velasV")
+velasR = input(1, title="velasR")
+maximos = highest(high, periodoMR)
+minimos = lowest(low, periodoMV)
+plot(maximos, color=color.red, linewidth=5)
+plot(minimos, color=color.green, linewidth=5)
+media = minimos + (maximos - minimos) / 2
+plot(media)
+    
+// STRATEGY
+var SL = 0.0
+var TP = 0.0
+var en_pausa = 0
+
+// 0.4 cake
+porc = input(defval=50000, title="Porcentaje", type=input.float, step=0.2)  //8.2
+stop_loss = input(defval=50000, title="Porcentaje Stop loss", type=input.float, step=0.2)  //8.2
+take_profit = input(defval=50000, title="Porcentaje Take profit", type=input.float, step=0.2) //37.6
+esperar = input(defval=7, title="Velas a esperar")
+
+// desde
+desde_a = input(2022, title="Desde Año")
+desde_m = input(1, title="Desde Mes", minval=1, maxval=12)
+desde_d = input(1, title="Desde Dia", minval=1, maxval=31)
+// hasta
+hasta_a = input(2023, title="Hasta Año")
+hasta_m = input(1, title="Hasta Mes", minval=1, maxval=12)
+hasta_d = input(1, title="Hasta Dia", minval=1, maxval=31)
+
+FechaValida() =>
+    desde = time >= timestamp(syminfo.timezone, desde_a, desde_m, desde_d, 0, 0)
+    hasta = time <= timestamp(syminfo.timezone, hasta_a, hasta_m, hasta_d, 0, 0)
+    desde and hasta
+
+
+
+
+//plot(venta or compra ? close : na, style=plot.style_circles, linewidth=5, color = compra ? color.green : venta ? color.red: na)
+//@version=4
+// study("Media apertura-cierre",overlay=false)
+//difclose10 = (close-line1[0])*5
+difclose55venta = close-line2[0]//(close-line2[0])
+difclose55compra = line2[0]-close//(line2[0]-close)
+
+plot(close, color=color.white, linewidth=5)
+
+//plot( difclose10, style=plot.style_histogram )
+rojo = difclose55venta[0] < difclose55venta[1] // and (line1 > line2) //and angulo(close) < mianguloR 
+verde = difclose55compra[0] < difclose55compra[1] // and (line1 < line2)  //and angulo(close) > mianguloV
+//plot(rojo or verde ? close : na, style=plot.style_circles, linewidth=9, color = verde ? color.blue : rojo ? color.red: na)
+//plot( (open-close) / 2 )
+
+periodolwstR = input(120, title="periodolwstR")
+periodolwstV = input(110, title="periodolwstV")
+lwstR = lowest(line2-line1, 50)
+lwstV = lowest(line1-line2, 50)
+plot(lwstR)
+plot(lwstV)
+compra =  low[0] == minimos[0] and verde and pendiente(close) > 0 // and lwstR[0] == close//* (1 + porc/100)) //or (line1 > line2)//difclose55compra[0] < difclose55compra[1] and line1 < line2//verde and low[0] == minimos[0]//verde //  and minimos[0] > minimos[1] //// and close > line2 and angulo(line1) > a//(ema(close, 10) > ema(close, 55))  
+venta =  high[0] == maximos[0] and rojo and pendiente(close) < 0// and lwstV[0] == close//* (1 - porc/100)) //difclose55venta[0] < difclose55venta[1] and line1 > line2//rojo and //rojo//and maximos[0] < maximos[1] // //  angulo(line1) < a  // close < line2  // not alcista //
+var cantidad = false
+comprado = cantidad//strategy.position_size > 0
+en_pausa := max(en_pausa -1, 0)
+
+yacompra = not comprado and compra and FechaValida() and en_pausa == 0 
+yavende = comprado and close <= SL or close >= TP or venta or not FechaValida()
+
+plot(yacompra or yavende ? close : na, style=plot.style_circles, linewidth=9, color = yacompra ? color.blue : yavende ? color.red: na)
+
+if ( yacompra )
+    // realizar compra
+    cantidad := true//round(strategy.equity / close)
+    //strategy.entry("Compra", strategy.long, cantidad)
+    
+    SL := close * (1 - stop_loss/100)
+    TP := close * (1 + take_profit/100)
+
+if comprado
+    // salir sl
+    if close <= SL
+        //strategy.close("Compra", comment="SL")
+        cantidad := false
+        en_pausa := esperar
+
+    // salir tp
+    if close >= TP
+        //strategy.close("Compra", comment="TP")
+        cantidad := false
+        
+    if venta
+        // realizar venta x cruce
+        //strategy.close("Compra", comment="Venta")
+        cantidad := false
+        
+    if not FechaValida()
+        // realizar venta x finalizacion periodo
+        //strategy.close("Compra", comment="Venta x fin")
+        cantidad = false
+        
+
+alertcondition(yacompra , message="Compra {{ticker}}", title="Orden de Compra")
+alertcondition(yavende, message="Venta {{ticker}}", title="Orden de Venta")
