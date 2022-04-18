@@ -40,7 +40,13 @@ var TP = 0.0
 var en_pausa = 0
 
 // 0.4 cake
-porc = input(defval=50000, title="Porcentaje", type=input.float, step=0.2)  //8.2
+porcentajeV = input(defval=0, title="porcentajeV", type=input.float, step=0.01)  //8.2
+porcentajeR = input(defval=0, title="PorcentajeR", type=input.float, step=0.01)  //8.2
+toleranciaV = minimos * (1 + porcentajeV/100)
+toleranciaR = maximos * (1 - porcentajeR/100)
+plot(toleranciaV)
+plot(toleranciaR)
+
 stop_loss = input(defval=50000, title="Porcentaje Stop loss", type=input.float, step=0.2)  //8.2
 take_profit = input(defval=50000, title="Porcentaje Take profit", type=input.float, step=0.2) //37.6
 esperar = input(defval=7, title="Velas a esperar")
@@ -83,8 +89,8 @@ lwstR = lowest(line2-line1, 50)
 lwstV = lowest(line1-line2, 50)
 plot(lwstR)
 plot(lwstV)
-compra =  low[0] == minimos[0] and verde and pendiente(close) > 0 // and lwstR[0] == close//* (1 + porc/100)) //or (line1 > line2)//difclose55compra[0] < difclose55compra[1] and line1 < line2//verde and low[0] == minimos[0]//verde //  and minimos[0] > minimos[1] //// and close > line2 and angulo(line1) > a//(ema(close, 10) > ema(close, 55))  
-venta =  high[0] == maximos[0] and rojo and pendiente(close) < 0// and lwstV[0] == close//* (1 - porc/100)) //difclose55venta[0] < difclose55venta[1] and line1 > line2//rojo and //rojo//and maximos[0] < maximos[1] // //  angulo(line1) < a  // close < line2  // not alcista //
+compra =  low[0] <= toleranciaV[0] and verde and pendiente(close) > 0 // and lwstR[0] == close//* (1 + porc/100)) //or (line1 > line2)//difclose55compra[0] < difclose55compra[1] and line1 < line2//verde and low[0] == minimos[0]//verde //  and minimos[0] > minimos[1] //// and close > line2 and angulo(line1) > a//(ema(close, 10) > ema(close, 55))  
+venta =  high[0] >= toleranciaR[0] and rojo and pendiente(close) < 0// and lwstV[0] == close//* (1 - porc/100)) //difclose55venta[0] < difclose55venta[1] and line1 > line2//rojo and //rojo//and maximos[0] < maximos[1] // //  angulo(line1) < a  // close < line2  // not alcista //
 comprado = strategy.position_size > 0
 en_pausa := max(en_pausa -1, 0)
 
