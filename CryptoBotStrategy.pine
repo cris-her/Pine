@@ -1,6 +1,6 @@
 //@version=4
 strategy("CryptoBot", overlay=true) // 371.63%, 4H
-// temporalidad 2 horas 
+// temporalidad 4 horas 
 //
 normalizacion = input(220, title="normalizacion") // configuracion de graficos - bloquear la relacion precio/barra
 a = input(0.0, title="angulo")
@@ -11,6 +11,8 @@ pendiente(y) =>
 angulo(y) =>
     atan( pendiente(y) ) * 180 / acos(-1) * normalizacion
 
+//mianguloV = input(10, title="mianguloV")
+//mianguloR = input(55, title="mianguloR")
 // EMAS
 longitud_mm_v = input(10, title="Longitud media movil Verde")
 longitud_mm_r = input(55, title="Longitud media movil Roja")
@@ -21,10 +23,12 @@ p1 = plot(line1, color=color.green)
 p2 = plot(line2, color=color.red)
 fill(p1, p2, color = line1 > line2 ? color.new(color.green, 0) :  color.new(color.red, 0) )
 
-periodoM = input(120, title="periodoM")
-velas = input(15, title="velas")
-maximos = highest(high, periodoM)
-minimos = lowest(low, periodoM)
+periodoMR = input(130, title="periodoMR")
+periodoMV = input(100, title="periodoMV")
+velasV = input(1, title="velasV")
+velasR = input(1, title="velasR")
+maximos = highest(high, periodoMR)
+minimos = lowest(low, periodoMV)
 plot(maximos, color=color.red, linewidth=5)
 plot(minimos, color=color.green, linewidth=5)
     
@@ -34,8 +38,8 @@ var TP = 0.0
 var en_pausa = 0
 
 // 0.4 cake
-stop_loss = input(defval=50, title="Porcentaje Stop loss", type=input.float, step=0.2) 
-take_profit = input(defval=50, title="Porcentaje Take profit", type=input.float, step=0.2)
+stop_loss = input(defval=7.4, title="Porcentaje Stop loss", type=input.float, step=0.2)  //8.2
+take_profit = input(defval=37.6, title="Porcentaje Take profit", type=input.float, step=0.2) //37.6
 esperar = input(defval=7, title="Velas a esperar")
 
 // desde
@@ -59,19 +63,19 @@ FechaValida() =>
 //@version=4
 // study("Media apertura-cierre",overlay=false)
 //difclose10 = (close-line1[0])*5
-difclose55venta = (close-line2[0])*5
-difclose55compra = (line2[0]-close)*5
+difclose55venta = close-line2[0]//(close-line2[0])
+difclose55compra = line2[0]-close//(line2[0]-close)
 
 plot(close, color=color.white, linewidth=5)
 
 //plot( difclose10, style=plot.style_histogram )
-rojo = difclose55venta[0] < difclose55venta[1] and pendiente(close) < 0 and (line1 > line2)// and 
-verde = difclose55compra[0] < difclose55compra[1] and pendiente(close) > 0 and (line1 < line2)//  and
-plot(rojo or verde ? close : na, style=plot.style_circles, linewidth=9, color = verde ? color.blue : rojo ? color.red: na)
+rojo = difclose55venta[0] < difclose55venta[1]  and (line1 > line2) //and angulo(close) < mianguloR 
+verde = difclose55compra[0] < difclose55compra[1]  and (line1 < line2)  //and angulo(close) > mianguloV
+//plot(rojo or verde ? close : na, style=plot.style_circles, linewidth=9, color = verde ? color.blue : rojo ? color.red: na)
 //plot( (open-close) / 2 )
 
-compra = verde and low == minimos[0]//verde //  and minimos[0] > minimos[1] //// and close > line2 and angulo(line1) > a//(ema(close, 10) > ema(close, 55))  
-venta =  rojo and high == maximos[0]//rojo//and maximos[0] < maximos[1] // //  angulo(line1) < a  // close < line2  // not alcista //
+compra = low[0] == minimos[0] //or (line1 > line2)//difclose55compra[0] < difclose55compra[1] and line1 < line2//verde and low[0] == minimos[0]//verde //  and minimos[0] > minimos[1] //// and close > line2 and angulo(line1) > a//(ema(close, 10) > ema(close, 55))  
+venta =  high[0] == maximos[0]//difclose55venta[0] < difclose55venta[1] and line1 > line2//rojo and //rojo//and maximos[0] < maximos[1] // //  angulo(line1) < a  // close < line2  // not alcista //
 comprado = strategy.position_size > 0
 en_pausa := max(en_pausa -1, 0)
 
