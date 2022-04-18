@@ -90,9 +90,9 @@ comprado = cantidad//strategy.position_size > 0
 en_pausa := max(en_pausa -1, 0)
 
 yacompra = not comprado and compra and FechaValida() and en_pausa == 0 
-yavende = comprado and close <= SL or close >= TP or venta or not FechaValida()
+yavende = (comprado and close <= SL) or (comprado and close >= TP) or (comprado and venta) or (comprado and not FechaValida())
 
-plot(yacompra or yavende ? close : na, style=plot.style_circles, linewidth=9, color = yacompra ? color.blue : yavende ? color.red: na)
+plot(yacompra or yavende ? close : na, style=plot.style_circles, linewidth=9, color = yacompra ? color.blue : yavende ? color.yellow: na)
 
 if ( yacompra )
     // realizar compra
