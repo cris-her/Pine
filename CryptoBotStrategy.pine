@@ -1,6 +1,6 @@
 //@version=4
 strategy("CryptoBot", overlay=true) // 371.63%, 4H
-// temporalidad 2 horas 
+// temporalidad 4 horas 
 //
 normalizacion = input(220, title="normalizacion") // configuracion de graficos - bloquear la relacion precio/barra
 a = input(0.0, title="angulo")
