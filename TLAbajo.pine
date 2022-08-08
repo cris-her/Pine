@@ -1,0 +1,637 @@
+//@version=4
+study(title="TradingLatino Abajo", shorttitle="TLAbajo", overlay=false)
+
+// https://www.tradingview.com/script/IrPpPRZi/
+// Current version: v20200805
+
+// TradingView Public tags - BEGIN
+// Tag 1: Momentum
+// Tag 2: Divergence
+// Tag 3: tradinglatino
+// TradingView Public tags - END
+
+// TradingView Public description - BEGIN
+//
+// This study tries to highlight LazyBear Squeeze Momentum divergences
+// as they are defined by
+// TradingLatino TradingView user
+// Squeeze momentum green peaks are connected by a line
+// Associated prices to these green peaks are also connected
+// If both lines have a different slope orientation
+// then there is a divergence.
+//
+// It only shows two last divergence lines and angles.
+//
+// The original chart screenshot shows some divergence lines
+// on the top or main chart
+// these were drawn manually
+// because you cannot write to two different charts
+// from the same pine script study (Well, not in August 2020 anyways)
+// 
+// It's aimed at BTCUSDT pair and 4h timeframe.
+// 
+// [b]HOW IT WORKS[/b]
+// Simple geometric mathematics are used
+// to calculate the two lines degrees
+// Then both degrees are compared
+// to show if both lines agree ( // or \\ )
+// or if they disagree ( /\ or \/ )
+// 
+// [b]SETTINGS[/b]
+// (SQZDiver) Show degrees [False]: Show degrees of each Squeeze Momentum Divergence
+//      lines to the x-axis.
+// (SQZDiver) Show desviation labels [True]: Whether to show
+//      or not desviation labels for the Squeeze Momentum Divergences.
+// (SQZDiver) Show desviation lines [True]: Whether to show
+//      or not desviation lines for the Squeeze Momentum Divergences.
+//
+// (ADX) Smoothing [14]
+// (ADX) DI Length [14]
+// (ADX) key level [23]
+// (ADX) Enable Scale [False]: Whether to show
+// or not ADX scale. Beaware it's only accurate for the last values.
+// (ADX) Print [False]: Whether to show
+//      or not scaled ADX line
+//
+// (SQZMOM) BB Length [20]
+// (SQZMOM) BB MultFactor [2.0]
+// (SQZMOM) KC Length [20]
+// (SQZMOM) KC MultFactor [1.5]
+// (SQZMOM) Use TrueRange (KC) [True]
+// (SQZMOM) Print [True]: Whether to show
+//      or not Squeeze Momentum indicator.
+// 
+// [b]WARNING[/b]
+// Some securities and timeframes might output degrees
+// too next to zero.
+// The code might need to be tweaked to meet your needs.
+// 
+// [b]USAGE[/b]
+// One strategy is to sell when you are in a long entry
+// when you find out that the price slope is upwards ( / )
+// while the lb smilb slope is downwards: ( \ ) 
+// E.g. You will see:
+// /
+// \
+// on the indicator.
+//
+// Why?
+// Because it might signal you that the price is
+// going to correct downwards soon.
+// 
+// [b]FEEDBACK 1[/b]
+// Please let me know if there is any
+// other strategy based on the red side of
+// LB Squeeze Momentum
+// so that I might add support for it in the future.
+// 
+// [b]FEEDBACK 2[/b]
+// Calculating degrees in a chart
+// with a different x-axis scale
+// is a nightmare
+// that's why I did not a range settings
+// so that values next to zero are
+// converted into zero
+// and thus showing an horizontal line.
+// 
+// Feedback is welcome on this matter.
+//
+// [b]EXTRA 1[/b]
+// If you turn off showing the divergence lines
+// and if you turn off showing the divergence labels
+// you almost get what TradingLatino user uses
+// as its default momentum indicator.
+//
+// [b]EXTRA 2[/b]
+// Optionally this indicator can show you
+// a rescaled ADX and its associated value in a label.
+//
+// [B]ABOUT COLOURS[/B]
+// TradingLatino user has both dark green and light green
+// inverted compared to this LB SQZMOM chart.
+// 
+// [b]CREDITS[/b]
+// I have reused and adapted some code from
+// 'Squeeze Momentum Indicator' study
+// which it's from TradingView LazyBear user.
+//
+// I have reused and adapted some code from
+// 'Directional Movement Index + ADX & Keylevel Support' study
+// which it's from TradingView console user.
+//
+// TradingView Public description - END
+
+
+// ADX
+// Squeeze Momentum Indicator de LazyBear (Version sugerida por el Pastebin 2014 09 29)
+// https://www.tradingview.com/script/nqQ1DT5a-Squeeze-Momentum-Indicator-LazyBear/
+// https://pastebin.com/UCpcX8d7
+
+// ADX
+// Name: Directional Movement Index + ADX & Keylevel Support
+// User: console
+// https://es.tradingview.com/script/38loM0lA-Directional-Movement-Index-ADX-Keylevel-Support/
+
+DIVERGENCE_COLOUR_A = color.white
+DIVERGENCE_COLOUR_B = color.silver
+
+ADX_PLUS_COLOUR=#ffcc00
+ADX_MINUS_COLOUR=#ff9900
+
+ADX_KEYLEVEL_OVER_23=color.white
+ADX_KEYLEVEL_BELOW_23=color.silver
+
+ADX_SCALE_NORMAL_COLOUR=color.gray
+ADX_SCALE_KEYLEVEL_COLOUR=color.blue
+ADX_SCALE_CURRENT_PRICE_COLOUR=color.teal
+
+enable_show_degrees = input(false, title="(SQZDiver) Show degrees [False]", type=input.bool)
+enable_show_desviation_labels = input(false, title="(SQZDiver) Show desviation labels [True]", type=input.bool)
+enable_show_desviation_lines = input(false, title="(SQZDiver) Show desviation lines [True]", type=input.bool)
+
+adx_adxlen = input(14, title="(ADX) Smoothing [14]")
+adx_dilen = input(14, title="(ADX) DI Length [14]")
+adx_keyLevel = input(23, title="(ADX) key level [23]")
+enable_adx_scale = input(true, title="(ADX) Enable Scale [False]", type=input.bool)
+adx_print = input(true, title="(ADX) Print [False]", type=input.bool)
+enable_show_adx_label = input(true, title="(ADX) Show label with ADX value. [False]", type=input.bool)
+adx_scalating_ema = input(100, title="(ADX) Scalating ema [100]")
+
+dirmov(len) =>
+	up = change(high)
+	down = -change(low)
+	truerange = rma(tr, len)
+	plus = fixnan(100 * rma(up > down and up > 0 ? up : 0, len) / truerange)
+	minus = fixnan(100 * rma(down > up and down > 0 ? down : 0, len) / truerange)
+	[plus, minus]
+
+adx(dilen, adxlen) => 
+	[plus, minus] = dirmov(dilen)
+	sum = plus + minus
+	adx = 100 * rma(abs(plus - minus) / (sum == 0 ? 1 : sum), adxlen)
+	[adx, plus, minus]
+
+hc = max(close, open)
+lc = min(close, open)
+
+[adx_sig, adx_up, adx_down] = adx(adx_dilen, adx_adxlen)
+
+
+sqzmom_length = input(20, title="(SQZMOM) BB Length [20]")
+sqzmom_mult = input(2.0,title="(SQZMOM) BB MultFactor [2.0]")
+sqzmom_lengthKC=input(20, title="(SQZMOM) KC Length [20]")
+sqzmom_multKC = input(1.5, title="(SQZMOM) KC MultFactor [1.5]")
+sqzmom_useTrueRange = input(true, title="(SQZMOM) Use TrueRange (KC) [True]", type=input.bool)
+sqzmom_print = input(true, title="(SQZMOM) Print [True]", type=input.bool)
+
+sqzmom(length, mult, lengthKC, multKC, useTrueRange) =>
+    // Calculate BB
+    source = close
+    basis = sma(source, length)
+    dev = mult * stdev(source, length)
+    upperBB = basis + dev
+    lowerBB = basis - dev
+
+    // Calculate KC
+    ma = sma(source, lengthKC)
+    range = useTrueRange ? tr : (high - low)
+    rangema = sma(range, lengthKC)
+    upperKC = ma + rangema * multKC
+    lowerKC = ma - rangema * multKC
+
+    sqzOn  = (lowerBB > lowerKC) and (upperBB < upperKC)
+    sqzOff = (lowerBB < lowerKC) and (upperBB > upperKC)
+    noSqz  = (sqzOn == false) and (sqzOff == false)
+
+    val = linreg(source - avg(avg(highest(high, lengthKC), lowest(low, lengthKC)),sma(close,lengthKC)), lengthKC,0)
+
+    bcolor = iff( val > 0, iff( val > nz(val[1]), color.lime, color.green), iff( val < nz(val[1]), color.red, color.maroon))
+    scolor = noSqz ? color.blue : sqzOn ? color.black : color.gray
+    [val, bcolor, scolor]
+
+[sqzmom_val, sqzmom_bcolor, sqzmom_scolor] = sqzmom(sqzmom_length, sqzmom_mult, sqzmom_lengthKC, sqzmom_multKC, sqzmom_useTrueRange)
+
+fun_line_slope(x1,y1,x2,y2) =>
+    (y2 - y1) / (x2 - x1)
+
+fun_slope_angle(slope) =>
+    x_axis_slope=0
+    angle_radians = atan((slope-x_axis_slope)/(1+(slope*x_axis_slope)))
+    pi_number = 3.1415926535897
+    angle_degrees = (angle_radians * 180) / pi_number
+    angle_degrees
+
+fun_divergence_symbol (line_smilb_angle, line_price_angle) =>
+    divergence_symbol = ""
+    line_smilb_angle_symbol = ""
+    line_price_angle_symbol = ""
+    line_smilb_angle_degrees = ""
+    line_price_angle_degrees = ""
+    if enable_show_degrees
+        line_smilb_angle_degrees := " (" + tostring(line_smilb_angle,"#.00") + ")"
+        line_price_angle_degrees := " (" + tostring(line_price_angle,"#.00") + ")"
+    
+    if (line_smilb_angle > 0)
+        line_smilb_angle_symbol := "/"
+    else
+        line_smilb_angle_symbol := "\\"
+    if (line_price_angle > 0)
+        line_price_angle_symbol := "/"
+    else
+        line_price_angle_symbol := "\\"
+    line_smilb_angle_symbol := line_smilb_angle_symbol + line_smilb_angle_degrees
+    line_price_angle_symbol := line_price_angle_symbol + line_price_angle_degrees
+
+    divergence_symbol := line_price_angle_symbol + "\n" + line_smilb_angle_symbol
+    divergence_symbol
+
+fun_set_current_section (red_smilb_section_a, green_smilb_section_b, red_smilb_section_b, green_smilb_section_a, smilb_is_green, smilb_is_red) =>
+    // Set correct section - BEGIN
+    l_green_smilb_section_b = green_smilb_section_b
+    l_red_smilb_section_b = red_smilb_section_b
+    l_green_smilb_section_a = green_smilb_section_a
+    l_red_smilb_section_a = red_smilb_section_a
+    // Detect we enter into green section b
+    if l_red_smilb_section_a[1] and smilb_is_green
+        l_green_smilb_section_b := false
+        l_red_smilb_section_b := false
+        l_green_smilb_section_a := false
+        l_red_smilb_section_a := false
+
+        l_green_smilb_section_b := true
+    // Detect we enter into red section b
+    if l_green_smilb_section_b[1] and smilb_is_red
+        l_green_smilb_section_b := false
+        l_red_smilb_section_b := false
+        l_green_smilb_section_a := false
+        l_red_smilb_section_a := false
+    
+        l_red_smilb_section_b := true
+    // Detect we enter into green section a
+    if l_red_smilb_section_b[1] and smilb_is_green
+        l_green_smilb_section_b := false
+        l_red_smilb_section_b := false
+        l_green_smilb_section_a := false
+        l_red_smilb_section_a := false
+    
+        l_green_smilb_section_a := true
+    // Detect we enter into red section a
+    if l_green_smilb_section_a[1] and smilb_is_red
+        l_green_smilb_section_b := false
+        l_red_smilb_section_b := false
+        l_green_smilb_section_a := false
+        l_red_smilb_section_a := false
+
+        l_red_smilb_section_a := true
+
+    
+    [l_green_smilb_section_b, l_red_smilb_section_b, l_green_smilb_section_a, l_red_smilb_section_a]
+    
+    // Set correct section - END
+
+fun_section_biggest_top(green_smilb_section, smilb_is_darker_green, smilb_is_light_green, green_maximum_smilb_section, green_maximum_price_section, green_maximum_section_index, new_green_divergence) =>
+
+    l_green_maximum_price_section = green_maximum_price_section
+    l_green_maximum_smilb_section = green_maximum_smilb_section
+    l_green_maximum_section_index = green_maximum_section_index
+    l_new_green_divergence = new_green_divergence
+    // Assuming we are in 'green section' let's obtain biggest top
+    if green_smilb_section and smilb_is_darker_green and smilb_is_light_green[1] and (not na(smilb_is_light_green[1]))
+        tmp_green_maximum_price_section = hc[1] // For top chart
+        tmp_green_maximum_smilb_section = sqzmom_val[1]
+        // Possible if for top chart
+        // if tmp_green_maximum_price_section > nz(green_maximum_price_section_a)
+        if tmp_green_maximum_smilb_section > nz(green_maximum_smilb_section)
+            l_green_maximum_price_section := tmp_green_maximum_price_section
+            l_green_maximum_smilb_section := tmp_green_maximum_smilb_section
+            l_green_maximum_section_index := bar_index - 1
+            l_new_green_divergence := true
+    
+    [l_green_maximum_price_section, l_green_maximum_smilb_section, l_green_maximum_section_index, l_new_green_divergence]
+
+fun_meta_divergence_symbol (green_maximum_section_index_b,green_maximum_smilb_section_b,green_maximum_section_index_a,green_maximum_smilb_section_a, green_maximum_price_section_b, green_maximum_price_section_a) =>
+
+    line_smilb_slope_a = fun_line_slope(green_maximum_section_index_b,green_maximum_smilb_section_b,green_maximum_section_index_a,green_maximum_smilb_section_a)
+    line_smilb_angle_a = fun_slope_angle(line_smilb_slope_a)
+    
+    line_price_slope_a = fun_line_slope(green_maximum_section_index_b,green_maximum_price_section_b,green_maximum_section_index_a,green_maximum_price_section_a)
+    line_price_angle_a = fun_slope_angle(line_price_slope_a)
+    
+    green_divergence_label_a_text = fun_divergence_symbol (line_smilb_angle_a, line_price_angle_a)
+
+var float sqzmom_val_print = na
+var float sqzmom_cross_print = na
+sqzmom_cross_price = 0.0
+if (sqzmom_print)
+    sqzmom_val_print := sqzmom_val
+    sqzmom_cross_print := sqzmom_cross_price
+else
+    sqzmom_val_print := na
+    sqzmom_cross_print := na
+
+plot(sqzmom_val_print, color=sqzmom_bcolor, style=plot.style_area, linewidth=4)
+plot(sqzmom_cross_print, color=sqzmom_scolor, style=plot.style_cross, linewidth=2)
+//linea_superior=close
+//plot(linea_superior,color=color.maroon,title="linea superior")
+
+var float highest_last_sqzmom_val = na
+var float lowest_last_sqzmom_val = na
+var float used_highest_last_sqzmom_val = na
+var float used_lowest_last_sqzmom_val = na
+
+highest_last_sqzmom_val := highest(sqzmom_val, (adx_scalating_ema))
+lowest_last_sqzmom_val := lowest(sqzmom_val, (adx_scalating_ema))
+
+// Thanks to ema I can plot an straight line (adx keylevel) into a curve line
+// but the final user might not feel it's curved.
+used_highest_last_sqzmom_val := ema(highest_last_sqzmom_val, adx_scalating_ema)
+used_lowest_last_sqzmom_val := ema(lowest_last_sqzmom_val, adx_scalating_ema)
+
+
+// Limites normales del adx
+// adx_sig = adx_sig
+// adx_keyLevel = adx_keyLevel
+adx_zero = 0
+adx_100 = 100
+
+adx_corrector_factor = (used_highest_last_sqzmom_val - used_lowest_last_sqzmom_val)/(adx_100-adx_zero)
+var float adx_factor_offset = na
+
+// Let's scale to match SQZMOM scale
+adx_sig_scaled_tmp= adx_sig * adx_corrector_factor
+adx_zero_scaled_tmp = adx_zero * adx_corrector_factor
+adx_100_scaled_tmp = adx_100 * adx_corrector_factor
+adx_keyLevel_scaled_tmp = adx_keyLevel * adx_corrector_factor
+
+if (used_lowest_last_sqzmom_val >= used_highest_last_sqzmom_val)
+    adx_factor_offset := used_lowest_last_sqzmom_val
+else
+    adx_factor_offset := - used_highest_last_sqzmom_val
+    
+adx_sig_scaled = adx_sig_scaled_tmp + adx_factor_offset
+adx_zero_scaled = adx_zero_scaled_tmp + adx_factor_offset
+adx_100_scaled = adx_100_scaled_tmp + adx_factor_offset
+adx_keyLevel_scaled = adx_keyLevel_scaled_tmp + adx_factor_offset
+
+
+float adx_sig_scaled_print = na
+float adx_zero_scaled_print = na
+float adx_100_scaled_print = na
+float adx_keyLevel_scaled_print = na
+
+
+if (adx_print)
+    adx_sig_scaled_print := adx_sig_scaled
+    adx_zero_scaled_print := adx_zero_scaled
+    adx_100_scaled_print := adx_100_scaled
+    adx_keyLevel_scaled_print := adx_keyLevel_scaled
+else
+    adx_sig_scaled_print := na
+    adx_zero_scaled_print := na
+    adx_100_scaled_print := na
+    adx_keyLevel_scaled_print := na
+
+adx_colour = ADX_PLUS_COLOUR
+adx_keylevel_colour = ADX_KEYLEVEL_OVER_23
+
+if (adx_sig >= adx_sig[1])
+    adx_colour := ADX_PLUS_COLOUR
+else
+    adx_colour := ADX_MINUS_COLOUR
+
+
+if (adx_sig > adx_keyLevel)
+    adx_keylevel_colour := ADX_KEYLEVEL_OVER_23
+else
+    adx_keylevel_colour := ADX_KEYLEVEL_BELOW_23
+        
+plot(adx_sig_scaled_print, color=adx_colour, title="Scalated ADX", linewidth=2)
+plot(adx_keyLevel_scaled_print, color=adx_keylevel_colour, title="Scalated ADX-23", linewidth=1)
+plotchar(adx_sig, "ADX", "", location = location.top)
+
+
+
+// Draw scale
+
+draw_adx_lvl_line(level_label, adx_lvl_price, level_colour) =>
+    dt = time - time[1]
+    var line adx_lvl_line = na
+    if barstate.islast and enable_adx_scale
+        adx_lvl_line := line.new(bar_index, close, bar_index, close, width=3, xloc = xloc.bar_time, color=level_colour)
+        line.set_x1(adx_lvl_line, floor(time + dt + (1 * dt) - (1*dt)))
+        line.set_x2(adx_lvl_line, floor(time + dt + (1 * dt)))
+        line.set_y1(adx_lvl_line, adx_lvl_price)
+        line.set_y2(adx_lvl_line, adx_lvl_price)
+    if barstate.islast and not enable_adx_scale
+        if not na(adx_lvl_line)
+            line.delete(adx_lvl_line)
+            adx_lvl_line := na
+    adx_lvl_line
+
+draw_adx_lvl_label(level_label, adx_lvl_price, level_colour, offset_x, label_size, label_tooltip, enabled) =>
+    loffset_x = 1
+    if (not na(offset_x))
+        loffset_x := offset_x
+    dt = time - time[1]
+    var label recent_lvl_label = na
+    var float level_special_price = na
+    if barstate.islast and enabled
+        level_special_price := adx_lvl_price
+        recent_lvl_label := label.new(bar_index, close, xloc = xloc.bar_time, color=level_colour, text=level_label, style=label.style_label_left, size=label_size, tooltip=label_tooltip)
+        label.set_x(recent_lvl_label, floor(time + dt + (loffset_x * dt)))
+        label.set_y(recent_lvl_label, level_special_price)
+    if barstate.islast and not enabled
+        if not na(recent_lvl_label)
+            label.delete(recent_lvl_label)
+            recent_lvl_label := na
+    recent_lvl_label
+
+fun_get_adx_scaled(adx_value, adx_corrector_factor, adx_factor_offset) =>
+    adx_sig_scaled_tmp= adx_value * adx_corrector_factor
+    adx_value_scaled = adx_sig_scaled_tmp + adx_factor_offset
+    adx_value_scaled
+
+
+var line adx_lvl0_line = na
+var line adx_lvl10_line = na
+var line adx_lvl20_line = na
+var line adx_lvl23_line = na
+var line adx_lvl30_line = na
+var line adx_lvl40_line = na
+var line adx_lvl50_line = na
+var line adx_lvl60_line = na
+var line adx_lvl70_line = na
+var line adx_lvl80_line = na
+var line adx_lvl90_line = na
+var line adx_lvl100_line = na
+
+var label adx_lvl0_label = na
+var label adx_lvl23_label = na
+var label adx_lvl50_label = na
+var label adx_lvl70_label = na
+var label adx_lvl100_label = na
+
+var int adx_offset_na = na
+
+if (barstate.islast)
+    
+    line.delete(adx_lvl0_line)
+    line.delete(adx_lvl10_line)
+    line.delete(adx_lvl20_line)
+    line.delete(adx_lvl23_line)
+    line.delete(adx_lvl30_line)
+    line.delete(adx_lvl40_line)
+    line.delete(adx_lvl50_line)
+    line.delete(adx_lvl60_line)
+    line.delete(adx_lvl70_line)
+    line.delete(adx_lvl80_line)
+    line.delete(adx_lvl90_line)
+    line.delete(adx_lvl100_line)
+
+    label.delete(adx_lvl0_label)
+    label.delete(adx_lvl23_label)
+    label.delete(adx_lvl50_label)
+    label.delete(adx_lvl70_label)
+    label.delete(adx_lvl100_label)
+
+    adx_lvl0_line := draw_adx_lvl_line(0, fun_get_adx_scaled(0, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR)
+    adx_lvl10_line := draw_adx_lvl_line(10, fun_get_adx_scaled(10, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR)
+    adx_lvl20_line := draw_adx_lvl_line(20, fun_get_adx_scaled(20, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR)
+    adx_lvl23_line := draw_adx_lvl_line(adx_keyLevel, fun_get_adx_scaled(adx_keyLevel, adx_corrector_factor, adx_factor_offset), ADX_SCALE_KEYLEVEL_COLOUR)
+    adx_lvl30_line := draw_adx_lvl_line(30, fun_get_adx_scaled(30, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR)
+    adx_lvl40_line := draw_adx_lvl_line(40, fun_get_adx_scaled(40, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR)
+    adx_lvl50_line := draw_adx_lvl_line(50, fun_get_adx_scaled(50, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR)
+    adx_lvl60_line := draw_adx_lvl_line(60, fun_get_adx_scaled(60, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR)
+    adx_lvl70_line := draw_adx_lvl_line(70, fun_get_adx_scaled(70, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR)
+    adx_lvl80_line := draw_adx_lvl_line(80, fun_get_adx_scaled(80, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR)
+    adx_lvl90_line := draw_adx_lvl_line(90, fun_get_adx_scaled(90, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR)
+    adx_lvl100_line := draw_adx_lvl_line(100, fun_get_adx_scaled(100, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR)
+
+    adx_lvl0_label_text=  "  0"
+    adx_lvl23_label_text= " " + tostring(adx_keyLevel,"#")
+    adx_lvl50_label_text= " 50"
+    adx_lvl70_label_text= " 70"
+    adx_lvl100_label_text="100"
+    adx_lvl0_label := draw_adx_lvl_label(adx_lvl0_label_text, fun_get_adx_scaled(0, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR, adx_offset_na, size.tiny, "ADX Scale", enable_adx_scale)
+    adx_lvl23_label := draw_adx_lvl_label(adx_lvl23_label_text, fun_get_adx_scaled(adx_keyLevel, adx_corrector_factor, adx_factor_offset), ADX_SCALE_KEYLEVEL_COLOUR, adx_offset_na, size.tiny, "ADX Scale", enable_adx_scale)
+    adx_lvl50_label := draw_adx_lvl_label(adx_lvl50_label_text, fun_get_adx_scaled(50, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR, adx_offset_na, size.tiny, "ADX Scale", enable_adx_scale)
+    adx_lvl70_label := draw_adx_lvl_label(adx_lvl70_label_text, fun_get_adx_scaled(70, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR, adx_offset_na, size.tiny, "ADX Scale", enable_adx_scale)
+    adx_lvl100_label := draw_adx_lvl_label(adx_lvl100_label_text, fun_get_adx_scaled(100, adx_corrector_factor, adx_factor_offset), ADX_SCALE_NORMAL_COLOUR, adx_offset_na, size.tiny, "ADX Scale", enable_adx_scale)    
+
+
+// Current ADX value label
+var label adx_label = na
+adx_label_text = "ADX: " + tostring(adx_sig,"#.00")
+
+label.delete(adx_label)
+if enable_show_adx_label and (barstate.islast)
+     // adx_label := label.new(x=bar_index, y=adx_sig_scaled, text=adx_label_text, xloc=xloc.bar_index, yloc=yloc.price, style=label.style_label_left)
+    adx_label := draw_adx_lvl_label(adx_label_text, adx_sig_scaled, ADX_SCALE_CURRENT_PRICE_COLOUR, 2, size.normal, "Current value", enable_show_adx_label)
+
+// Optional lines to find ADX top and bottom
+//plot(adx_zero_scaled, color=color.silver, title="ADX-ZERO", linewidth=1)
+//plot(adx_100_scaled, color=color.silver, title="ADX-100", linewidth=1)
+
+// Default plots from original ADX study
+// plot(adx_up, color=color.blue, title="+DI")
+// plot(adx_down, color=color.gray, title="-DI")
+// plot(adx_keyLevel, color=color.white, title="Key Level")
+
+// Order of sections: GREEN-A, RED-A, GREEN-B, RED-B and then again GREEN-A,...
+
+smilb_is_darker_red = (sqzmom_bcolor == color.maroon)
+smilb_is_light_red = (sqzmom_bcolor == color.red)
+smilb_is_darker_green = (sqzmom_bcolor == color.green)
+smilb_is_light_green = (sqzmom_bcolor == color.lime)
+smilb_is_green = smilb_is_darker_green or smilb_is_light_green
+smilb_is_red = smilb_is_darker_red or smilb_is_light_red
+
+var bool green_smilb_section_a = na
+var bool green_smilb_section_b = na
+var bool red_smilb_section_a = na
+var bool red_smilb_section_b = na
+var float maximum_green = na
+var float green_maximum_price_section_a = na
+var float green_maximum_price_section_b = na
+var float green_maximum_smilb_section_a = na
+var float green_maximum_smilb_section_b = na
+var int green_maximum_section_index_a = na
+var int green_maximum_section_index_b = na
+bool new_green_divergence_a = false
+bool new_green_divergence_b = false
+
+var line green_divergence_line_a = na
+var line green_divergence_line_b = na
+var label green_divergence_label_a = na
+var label green_divergence_label_b = na
+
+float dibujar_divergencia = 0
+
+// Let's start with section a
+if barstate.isfirst
+    if smilb_is_red
+        red_smilb_section_a := true
+    else
+        green_smilb_section_a := true
+
+[tmp_green_smilb_section_b, tmp_red_smilb_section_b, tmp_green_smilb_section_a, tmp_red_smilb_section_a] = fun_set_current_section (red_smilb_section_a, green_smilb_section_b, red_smilb_section_b, green_smilb_section_a, smilb_is_green, smilb_is_red)
+
+green_smilb_section_b := tmp_green_smilb_section_b
+red_smilb_section_b := tmp_red_smilb_section_b
+green_smilb_section_a := tmp_green_smilb_section_a
+red_smilb_section_a := tmp_red_smilb_section_a
+
+
+// Reset green_maximum_smilb_section_a when entering a new green_section_a
+if green_smilb_section_a and smilb_is_red[1] and (not na(smilb_is_red[1]))
+    green_maximum_smilb_section_a := na
+    green_maximum_price_section_a := na
+
+// Reset green_maximum_smilb_section_b when entering a new green_section_b
+if green_smilb_section_b and smilb_is_red[1] and (not na(smilb_is_red[1]))
+    green_maximum_smilb_section_b := na
+    green_maximum_price_section_b := na
+
+// Assuming we are in 'green section a' let's obtain biggest top
+[tmpa_green_maximum_price_section, tmpa_green_maximum_smilb_section, tmpa_green_maximum_section_index, tmpa_new_green_divergence] = fun_section_biggest_top(green_smilb_section_a, smilb_is_darker_green, smilb_is_light_green, green_maximum_smilb_section_a, green_maximum_price_section_a, green_maximum_section_index_a, new_green_divergence_a)
+
+green_maximum_price_section_a := tmpa_green_maximum_price_section
+green_maximum_smilb_section_a := tmpa_green_maximum_smilb_section
+green_maximum_section_index_a := tmpa_green_maximum_section_index
+new_green_divergence_a := tmpa_new_green_divergence
+
+// Assuming we are in 'green section b' let's obtain biggest top
+[tmpb_green_maximum_price_section, tmpb_green_maximum_smilb_section, tmpb_green_maximum_section_index, tmpb_new_green_divergence] = fun_section_biggest_top(green_smilb_section_b, smilb_is_darker_green, smilb_is_light_green, green_maximum_smilb_section_b, green_maximum_price_section_b, green_maximum_section_index_b, new_green_divergence_b)
+
+green_maximum_price_section_b := tmpb_green_maximum_price_section
+green_maximum_smilb_section_b := tmpb_green_maximum_smilb_section
+green_maximum_section_index_b := tmpb_green_maximum_section_index
+new_green_divergence_b := tmpb_new_green_divergence
+
+// Plot divergence on 'green section a'
+if green_smilb_section_a and new_green_divergence_a and not (na(green_maximum_smilb_section_b))
+    line.delete(green_divergence_line_a)
+    // Possible line for top chart
+    // green_divergence_line_a := line.new(green_maximum_section_index_b, green_maximum_price_section_b, green_maximum_section_index_a, green_maximum_price_section_a, width=2, xloc = xloc.bar_index, color=DIVERGENCE_COLOUR_A, style=line.style_dotted)
+    if enable_show_desviation_lines
+        green_divergence_line_a := line.new(green_maximum_section_index_b, green_maximum_smilb_section_b, green_maximum_section_index_a, green_maximum_smilb_section_a, width=2, xloc = xloc.bar_index, color=DIVERGENCE_COLOUR_A, style=line.style_dotted)
+    
+    green_divergence_label_a_text = fun_meta_divergence_symbol (green_maximum_section_index_b,green_maximum_smilb_section_b,green_maximum_section_index_a,green_maximum_smilb_section_a, green_maximum_price_section_b, green_maximum_price_section_a)
+    
+    label.delete(green_divergence_label_a)
+    if enable_show_desviation_labels
+        green_divergence_label_a := label.new(x=green_maximum_section_index_a, y=green_maximum_smilb_section_a, text=green_divergence_label_a_text, xloc=xloc.bar_index, yloc=yloc.price)
+
+// Plot divergence on 'green section b'
+if green_smilb_section_b and new_green_divergence_b and not (na(green_maximum_smilb_section_a))
+    line.delete(green_divergence_line_b)
+    // Possible line for top chart
+    // green_divergence_line_b := line.new(green_maximum_section_index_a, green_maximum_price_section_a, green_maximum_section_index_b, green_maximum_price_section_b, width=2, xloc = xloc.bar_index, color=DIVERGENCE_COLOUR_B, style=line.style_dotted)
+    if enable_show_desviation_lines
+        green_divergence_line_b := line.new(green_maximum_section_index_a, green_maximum_smilb_section_a, green_maximum_section_index_b, green_maximum_smilb_section_b, width=2, xloc = xloc.bar_index, color=DIVERGENCE_COLOUR_B, style=line.style_dotted)
+    
+    green_divergence_label_b_text = fun_meta_divergence_symbol (green_maximum_section_index_a,green_maximum_smilb_section_a,green_maximum_section_index_b,green_maximum_smilb_section_b, green_maximum_price_section_a, green_maximum_price_section_b)
+
+    label.delete(green_divergence_label_b)
+    if enable_show_desviation_labels
+        green_divergence_label_b := label.new(x=green_maximum_section_index_b, y=green_maximum_smilb_section_b, text=green_divergence_label_b_text, xloc=xloc.bar_index, yloc=yloc.price)
