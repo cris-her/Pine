@@ -1,0 +1,237 @@
+// https://www.tradingview.com/script/hPTIynCO/
+
+//@version=4
+study("Range identifier by angle", shorttitle="RIDAngle", overlay=true, max_bars_back=5000)
+
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+
+// Current version: v20200705 Beta 1
+
+// TradingView Public description - BEGIN
+// 
+// This study tries to highlight ranges
+// as they are defined by
+// TradingLatino TradingView user
+// 
+// It's aimed at BTCUSDT pair and 4h timeframe.
+//
+// HOW IT WORKS
+// ============
+// Price source is the middle between open and close values.
+//
+// For each of the bars a '5' periods regression line is calculated
+// The regression line has an angle with the 0-axis line
+// which might be between 0 and 90.
+// 0 angle would mean price is always the same
+// 90 angle would mean price going to infinity
+//
+// When '2' of those periods in a row
+// have their angles between a maximum angle
+// and a minimum angle then you have the range
+//
+// SETTINGS
+// ========
+// Price range bar periods [5]: How many previous periods are used to calculate the bar regression line
+// Price range range periods [2]"): How many periods in a row should be used to say that there is a range
+//
+// Price range maximum angle [88.0] ( < 90.0 !!! ): Maximum angle for range detection
+// Price range minimum angle [-88.0] ( > -90.0 !!! ): Mininum angle for range detection
+// Angles should be set from -89.99 for the minimum angle to +89.99 for the maximum angle
+//
+//
+// WARNING
+// =======
+// Despite the name indicator does not identify the entire range.
+// It identifies when you realise you are inside a range.
+// E.g. If a range length is 8 periods length this range indicator
+// will highlight only the last 6 periods of the range.
+// 
+// POSIBLE USAGE
+// =============
+// If your strategy signals you an upwards trend
+// then you might use this range detector
+// to know when to exit your long position
+//
+// Why?
+//
+// Because most of the times
+// the price is found to be
+// in a range it goes down
+//
+// FEEDBACK 1
+// ==========
+// I'm quite sure this range approach by comparing angles is a novel one.
+// I have checked Range Identifier [LazyBear] script from TradingView LazyBear user
+// and it uses another approach.
+//
+// I'm interested on different approaches on how to detect ranges.
+//
+// FEEDBACK 2
+// ==========
+// I have only used this identifier in BTCUSDT 4h timeframe.
+// I'm interested to know if applying it more traditional
+// stocks the degrees need to be adjusted to something
+// more smaller.
+//
+// PINE SCRIPT TRICK
+// =================
+// This script simulates looping an string char by char
+// in pine script.
+//
+// CREDITS
+// =======
+// I have reused and adapted some code from
+// 'TF Segmented Linear Regression' script
+// which it's from TradingView alexgrover user.
+//
+// TradingView Public description - END
+
+// CREDITS - BEGIN
+
+// Slope steepness
+// Name: TF Segmented Linear Regression
+// User: alexgrover
+//
+// CREDITS - END
+
+// Linear regression - functions
+lrp_Sum(src,p) => a = cum(src), a - a[max(p,0)]
+
+lrp_Wma(src,p) => 
+    mp = max(p,0)
+    denom = mp*(mp+1)/2
+    a = cum(src), (mp*a - lrp_Sum(a[1],p))/denom
+
+lrp_getAandB(src, p) =>
+    a = lrp_Wma(src[1],p)
+    b = lrp_Sum(src[1],p)/p
+
+    A = 4*b-3*a
+    B = 3*a-2*b
+    [A,B]
+
+fun_linear_regression_points(src, periods_number) =>
+    k = 0 // Default value enforced
+    [A,B] = lrp_getAandB(src, periods_number)
+    line lr = na
+    x1 = bar_index - periods_number + 1
+    y1 = A+k
+    x2 = bar_index - 1 + 1
+    y2 = B+k
+    [x1,y1,x2,y2]
+
+fun_line_slope(x1,y1,x2,y2) =>
+    (y2 - y1) / (x2 - x1)
+
+fun_slope_angle(slope) =>
+    x_axis_slope=0
+    angle_radians = atan((slope-x_axis_slope)/(1+(slope*x_axis_slope)))
+    pi_number = 3.1415926535897
+    angle_degrees = (angle_radians * 180) / pi_number
+    angle_degrees
+
+fun_price_angle(src, periods_number) =>
+    [x1,y1,x2,y2] = fun_linear_regression_points(src, periods_number)
+    line_slope = fun_line_slope(x1,y1,x2,y2)
+    line_angle = fun_slope_angle(line_slope)
+    line_angle
+
+fun_amount_within_limits(amount, maximum_amount, minimum_amount) =>
+    (amount > minimum_amount) and (amount < maximum_amount)
+
+fun_price_is_in_range(price_angle, maximum_angle, minimum_angle, pricerange_range_periods_number) =>
+    is_in_range = true
+    for nbar = 0 to (pricerange_range_periods_number - 1)
+        nbar_within_limits = fun_amount_within_limits(price_angle[nbar], maximum_angle, minimum_angle)
+        if (not(nbar_within_limits))
+            is_in_range := false
+    is_in_range
+
+
+// TradingLatino Price is in range - Inputs
+pricerange_slope_periods_number = input(5, title="Price range bar periods [5]")
+pricerange_range_periods_number = input(2, title="Price range range periods [2]")
+pricerange_maximum_angle = input(88.0, title="Price range maximum angle [88.0] ( < 90.0 !!! )")
+pricerange_minimum_angle = input(-88.0, title="Price range minimum angle [-88.0] ( > 90.0 !!! )")
+pricerange_background_colour = color.yellow
+pricerange_text_colour = color.white
+
+// Price is in range
+
+hc = max(close, open)
+lc = min(close, open)
+
+pricerange_src = lc + ((hc - lc) / 2)
+
+price_angle = fun_price_angle(pricerange_src, pricerange_slope_periods_number)
+price_is_in_range = fun_price_is_in_range(price_angle, pricerange_maximum_angle, pricerange_minimum_angle, pricerange_range_periods_number)
+
+range_string_loop_by_char(global_char_number, reset) =>
+    range_string_length = 6 // 'RANGE-'
+    char_number = global_char_number
+    if reset
+        char_number := 1
+    else
+        char_number := char_number + 1
+    if (char_number == (range_string_length + 1))
+        char_number := 1
+
+    return_char = (char_number == 1) ? 'R' :
+         (char_number == 2) ? 'A' :
+         (char_number == 3) ? 'N' : 
+         (char_number == 4) ? 'G' : 
+         (char_number == 5) ? 'E' : 
+         (char_number == 6) ? '-' : 'Notreturned'
+    return_char
+
+range_string_loop_by_number(global_char_number, reset) =>
+    range_string_length = 6 // 'RANGE-'
+    char_number = global_char_number
+    if reset
+        char_number := 1
+    else
+        char_number := char_number + 1
+    if (char_number == (range_string_length + 1))
+        char_number := 1
+
+    return_char = (char_number == 1) ? 'R' :
+         (char_number == 2) ? 'A' :
+         (char_number == 3) ? 'N' : 
+         (char_number == 4) ? 'G' : 
+         (char_number == 5) ? 'E' : 
+         (char_number == 6) ? '-' : 'Notreturned'
+    char_number
+
+// Loop range string by char preparation - BEGIN
+var range_char = 'S'
+var range_char_number = 1
+if (price_is_in_range)
+    if (not (price_is_in_range[1]))
+        // RFE to TradingView: Please let me assign ( := ) a function array result to two variables
+        // as you already can with ( = ).
+        range_char := range_string_loop_by_char(range_char_number,true)
+        range_char_number := range_string_loop_by_number(range_char_number,true)
+    else
+        range_char := range_string_loop_by_char(range_char_number,false)
+        range_char_number := range_string_loop_by_number(range_char_number,false)
+
+price_is_in_range_R = ( price_is_in_range and (range_char=="R") )
+price_is_in_range_A = ( price_is_in_range and (range_char=="A") )
+price_is_in_range_N = ( price_is_in_range and (range_char=="N") )
+price_is_in_range_G = ( price_is_in_range and (range_char=="G") )
+price_is_in_range_E = ( price_is_in_range and (range_char=="E") )
+price_is_in_range__ = ( price_is_in_range and (range_char=="-") )
+
+// Loop range string by char preparation - END
+
+// Show Range - BEGIN
+
+plotshape(series=price_is_in_range_R, title="RangeTitleR", style=shape.square, color=pricerange_background_colour, transp=50, text="R", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+plotshape(series=price_is_in_range_A, title="RangeTitleA", style=shape.square, color=pricerange_background_colour, transp=50, text="A", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+plotshape(series=price_is_in_range_N, title="RangeTitleN", style=shape.square, color=pricerange_background_colour, transp=50, text="N", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+plotshape(series=price_is_in_range_G, title="RangeTitleG", style=shape.square, color=pricerange_background_colour, transp=50, text="G", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+plotshape(series=price_is_in_range_E, title="RangeTitleE", style=shape.square, color=pricerange_background_colour, transp=50, text="E", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+plotshape(series=price_is_in_range__, title="RangeTitle_", style=shape.square, color=pricerange_background_colour, transp=50, text="-", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+
+// Show Range - END
+
