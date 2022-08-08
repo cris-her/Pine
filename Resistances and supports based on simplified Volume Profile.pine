@@ -1,0 +1,586 @@
+//@version=4
+study("Resistances and supports based on simplified Volume Profile", "SVPResSup", overlay=true)
+
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+
+// Current version: v20201024
+// https://www.tradingview.com/script/kaHl6wre/
+// TradingView Public tags - BEGIN
+// Tag 1: Volume Profile
+// Tag 2: Resistances and Supports
+// Tag 3: tradinglatino
+// TradingView Public tags - END
+
+// TradingView Public description - BEGIN
+//
+// This study tries to highlight support and resistances
+// as they are defined by
+// TradingLatino TradingView user
+// His definition is based on volume peaks
+// on the official TradingView Volume Profile
+// indicator that seem rather big on size.
+// 
+// As a bonus it also serves as a rather simple volume profile indicator.
+// As you can see it only show last blocks volume profile.
+// 
+// It's aimed at BTCUSDT pair and 4h timeframe.
+// 
+// [b]HOW IT WORKS[/b]
+// [b]HOW IT WORKS - Recent Profile Block[/b]
+// It gathers volume from the last 100 Bars
+// in order to draw the recent profile block
+// 
+// Volume that intersects with current level range
+// being studied is added to its value.
+// 
+// Additionally the current level price is modified
+// so that it matches the level price where most
+// of the volume has concentrated
+// 
+// So you get a pretty accurate way of the volume
+// while at the same time the level are not stuck
+// to arbitrary level prices.
+// 
+// [b]HOW IT WORKS - Resistances and Supports[/b]
+// It calculates the level which its price it's
+// nearer (from below) to the current price level
+// 
+// Resistance is found steping up (from current prive level)
+// level by level
+// till you find a level which its value
+// is higher than the previous level value.
+// 
+// Support is found steping down (from current prive level)
+// level by level
+// till you find a level which its value
+// is higher than the previous level value.
+// 
+// That way you ignore rather small
+// resistances and support values.
+// 
+// Finally the resistances and supports are drawn next to the recent profile block
+// so that you can look at them with ease.
+// 
+// If you hover over the label you can double check if you are looking at
+// current price, resistance or support levels.
+// 
+// [b]SETTINGS[/b]
+// [list]
+// [*] Avoid label price overlaps vertically {False}. By default the label is print according to the price shown in it. Labels will be printed apart so that they don't overlap when this mode is turned on.
+// [*] Improve label price overlaps horizontally {True}
+// [*] Use number of bars (not VP timeframe) [false]: By default the number of bars used is set according to the Volume Profile timeframe setting. If this setting is enabled the 'Bars in recent profile block' setting is used instead.
+// [*] Volume Profile width (in bars) {15}: Volume Profile can be make larger or smaller in width thanks to this option.
+// [*] Volume Profile offset (in bars) {5}: Volume Profile can be shown more to the left or to the right if the defaults do not suit you.
+// [*] Volume Profile lines width (in pixels) {2}.
+// [*] Volume Profile labels size {small}.
+// [*] Volume Profile offset between labels (in bars) {2}. How many bars between labels to minimize horizontal overlaps. It will only be taken into account if 'Improve label price overlaps horizontally' is set to True.
+// [*] Show tick difference from current price {False}. BETA. Feedback needed.
+// [*] Custom number of bars {100}. How many previous period volumes are used to calculate the recent profile block. It's only used if 'Use number of bars (not VP timeframe)' setting is set to true.
+// [*] Volume Profile timeframe {1D}: Use 1 day (or other selected resolution) for calculating the recent profile block. It's only used if 'Use number of bars (not VP timeframe)' setting is set to false.
+// [*] Resistances prices number of decimal digits {2}: How many digits is shown at the resistance and support level prices.
+// [/list]
+// 
+// [b]WARNING[/b]
+// Please be aware that depending on your security and timeframe you might need to modify the
+// 'Bars in recent profile block' setting so that the study does not timeout.
+// 
+// [b]USAGE[/b]
+// If your strategy calculates take profit
+// limits on higher resistances based
+// on volume you could use this indicator
+// resistance detector
+// 
+// [b]FEEDBACK 1[/b]
+// This is my first volume indicator.
+// I suppose that each trader
+// has his own approach on defining
+// resistances and supports.
+// 
+// I'm interested on knowing if the default way
+// this resistances and supports are calculated
+// matches what other traders would have
+// highlighted manually on the chart.
+// 
+// [b]FEEDBACK 2[/b]
+// I have only used this identifier in BTCUSDT 4h timeframe.
+// I'm interested to know what needs to be tweaked
+// in other securities and timeframes.
+// 
+// [b]PINE STUDY TRICK[/b]
+// This study let's you choose the number of decimals the label will use.
+// 
+// [b]CREDITS[/b]
+// I have reused and adapted some code from
+// 'Poor man's volume profile' study
+// which it's from TradingView IldarAkhmetgaleev user.
+// 
+// I also wanted to thank him for helping me understanding his study.
+//
+// I have reused some code from
+// 'MTF Selection Framework - PineCoders FAQ' study
+// which it's from TradingView PineCoders user.
+//
+// TradingView Public description - END
+
+// CREDITS - BEGIN
+
+// Volume levels
+// Name: Poor man's volume profile
+// User: IldarAkhmetgaleev
+//
+// See also https://github.com/akhilman/vol-poorofile
+
+// Timeframe to minutes
+// Name: MTF Selection Framework - PineCoders FAQ
+// User: PineCoders
+
+// CREDITS - END
+
+
+// enable_recent_profile = input(true, "Enable recent profile")
+enable_avoid_overlap_mode = input(false, "Avoid label price overlaps vertically {False}")
+enable_improve_horizontal_overlap_mode = input(true, "Improve label price overlaps horizontally {True}")
+enable_recent_profile = true
+enable_custom_recent_n_bars = input(false, "Use number of bars (not VP timeframe) {False}")
+recent_profile_width = input(15, "Volume Profile width (in bars) {15}", minval=10, maxval=50, step=1)
+recent_profile_offset = input(5, "Volume Profile offset (in bars) {5}", minval=1, maxval=50, step=1)
+recent_line_witdh = input(2, "Volume Profile lines width (in pixels) {2}", minval=1, maxval=50, step=1)
+recent_label_size = input(size.small,  "Volume Profile labels size {small}", options=[size.auto, size.tiny, size.small, size.normal, size.large, size.huge])
+recent_label_offset = input(2, "Volume Profile offset between labels (in bars) {2}", minval=1, maxval=50, step=1)
+enable_show_ticks = input(false, "Show tick difference from current price {False}")
+custom_recent_n_bars = input(100, "Custom number of bars {100}", minval=1, maxval=500)
+vp_timeframe = input("1D",title="Volume Profile timeframe {1D}",type=input.resolution)
+resistances_price_decimal_digits = input(2, "Resistances prices number of decimal digits {2}", minval=0, maxval=10, step=1)
+
+
+// VP_PRICE_LEVELS = input(20, "Price levels [20]", minval=20, maxval=100)
+VP_PRICE_LEVELS = 20
+
+
+LAST_BLOCK_COLOR = color.gray
+CURRENT_PRICE_LEVEL_COLOR = color.blue
+SUPPORT_PRICE_LEVEL_COLOR = color.green
+RESISTANCE_PRICE_LEVEL_COLOR = color.red
+VPOC_PRICE_LEVEL_COLOR = color.yellow
+
+int current_price_level_number = na
+int support_price_level_number = na
+int resistance_price_level_number = na
+int vpoc_price_level_number = na
+
+
+
+max_bars_back(volume, 500)
+max_bars_back(high, 500)
+max_bars_back(low, 500)
+
+// recent_n_bars = input(100, "Bars in recent profile block", minval=1, maxval=500)
+
+// —————————— PineCoders MTF Selection Framework functions
+// ————— Converts current "timeframe.multiplier" plus the TF into minutes of type float.
+f_resInMinutes() => 
+    _resInMinutes = timeframe.multiplier * (
+      timeframe.isseconds ? 1. / 60. :
+      timeframe.isminutes ? 1.       :
+      timeframe.isdaily   ? 1440.    :
+      timeframe.isweekly  ? 10080.   :
+      timeframe.ismonthly ? 43800.   : na)
+
+get_resolution_bar_minutes(resolution) =>
+    minutes = resolution == '1' ? (1 * 1) : 
+     resolution == '3' ? (3 * 1) :
+     resolution == '5' ? (5 * 1) : 
+     resolution == '15' ? (15 * 1) : 
+     resolution == '30' ? (30 * 1) : 
+     resolution == '45' ? (45 * 1) : 
+     resolution == '60' ? (60 * 1) : 
+     resolution == '120' ? (2 * 60) : 
+     resolution == '180' ? (3 * 60) : 
+     resolution == '240' ? (4 * 60) : 
+     resolution == '1D' ? (24 * 60) :
+     resolution == '1W' ? (7 * 24 * 60) :
+     f_resInMinutes() // Equal to current symbol
+    minutes
+
+recent_n_bars_based_on_resolution = int(floor(get_resolution_bar_minutes(vp_timeframe) / f_resInMinutes()))
+
+recent_n_bars = 0
+if enable_custom_recent_n_bars
+    recent_n_bars := custom_recent_n_bars
+else
+    recent_n_bars := recent_n_bars_based_on_resolution
+
+row_width_multiplier = recent_n_bars
+
+////
+// Utils
+///
+
+get_resistances_price_decimal_digits_zero_string () =>
+    zero_string = ""
+    if not (resistances_price_decimal_digits == 0)
+        for digit = 1 to resistances_price_decimal_digits
+            zero_string := zero_string + "0"
+    zero_string
+
+level_value(from_i, to_i, row_low, row_high) =>
+    float actual_low = na
+    float actual_high = na
+    val = 0.0
+    for i = from_i to to_i
+        if low[i] < row_high and high[i] > row_low
+            if low[i] > row_low
+                actual_low := low[i]
+            else
+                actual_low := row_low // Should not happen
+
+            if high[i] < row_high
+                actual_high := high[i]
+            else
+                actual_high := row_high
+
+            val := val + volume[i] * (max(actual_high - actual_low, 1) / max((row_high - row_low) * VP_PRICE_LEVELS, 1) )
+    val
+
+level_price(from_i, to_i, row_low, row_high) =>
+    float actual_low = na
+    float actual_high = na
+    float volume_ponderated = 0.0
+    float price_ponderated = 0.0
+    float total_volume = 0.0
+    float price_ponderated_top_sum = 0.0
+    float return_price = 0.0
+
+    for i = from_i to to_i
+        actual_high := row_high // Default value for the loop
+        actual_low := row_low // Default values for the loop
+        volume_ponderated := 0.0 // Default value for the loop
+        if low[i] < row_high and high[i] > row_low
+            if low[i] > row_low
+                actual_low := low[i]
+            else
+                actual_low := row_low // Should not happen
+
+            if high[i] < row_high
+                actual_high := high[i]
+            else
+                actual_high := row_high
+
+            volume_ponderated := volume[i] * (max(actual_high - actual_low, 1) / max((row_high - row_low) * VP_PRICE_LEVELS, 1))
+
+            total_volume := total_volume + volume_ponderated
+            price_ponderated := ((actual_high + actual_low) / 2)
+            price_ponderated_top_sum := price_ponderated_top_sum + (price_ponderated * volume_ponderated)
+            
+    if (total_volume != 0)
+        return_price := price_ponderated_top_sum / total_volume
+    else
+        return_price := ((row_low + row_high ) / 2)
+
+    return_price
+
+level_value_wrapper(recent_lvl_height, recent_low, level_number, from_i, to_i) =>
+    recent_lvl_low = recent_low + recent_lvl_height * (0 + level_number)
+    recent_lvl_high = recent_low + recent_lvl_height * (1 + level_number)
+    recent_lvl_value = level_value(0, recent_n_bars, recent_lvl_low, recent_lvl_high)
+    recent_lvl_value
+
+level_price_wrapper(recent_lvl_height, recent_low, level_number) =>
+    recent_lvl_low = recent_low + recent_lvl_height * (0 + level_number)
+    recent_lvl_high = recent_low + recent_lvl_height * (1 + level_number)
+    
+    recent_lvl_price = level_price(0, recent_n_bars, recent_lvl_low, recent_lvl_high)
+    tick_based_lvl_price = 0.0
+    if (enable_show_ticks and (syminfo.mintick > 0))
+        tick_based_lvl_price := floor(recent_lvl_price / syminfo.mintick) * syminfo.mintick
+    else 
+        tick_based_lvl_price := recent_lvl_price
+    
+    tick_based_lvl_price
+
+level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, level_number) =>
+    recent_lvl_low = recent_low + recent_lvl_height * (0 + level_number)
+    recent_lvl_high = recent_low + recent_lvl_height * (1 + level_number)
+    recent_lvl_value = level_value(0, recent_n_bars, recent_lvl_low, recent_lvl_high)
+    recent_lvl_width = row_width_multiplier * recent_lvl_value / recent_highest_lvl_value
+    
+    recent_lvl_width
+
+get_level_colour(level_number) =>
+    if (level_number == vpoc_price_level_number)
+        VPOC_PRICE_LEVEL_COLOR
+    else if (level_number == current_price_level_number)
+        CURRENT_PRICE_LEVEL_COLOR
+    else if (level_number == support_price_level_number)
+        SUPPORT_PRICE_LEVEL_COLOR
+    else if (level_number == resistance_price_level_number)
+        RESISTANCE_PRICE_LEVEL_COLOR
+    else
+        LAST_BLOCK_COLOR
+
+get_level_tooltip(level_number) =>
+    if (level_number == vpoc_price_level_number)
+        "Volume Point Of Control (VPoc)"
+    else if (level_number == current_price_level_number)
+        "Current price"
+    else if (level_number == support_price_level_number)
+        "Support"
+    else if (level_number == resistance_price_level_number)
+        "Resistance"
+    else
+        ""
+get_level_label_offset(level_number) =>
+    if (enable_improve_horizontal_overlap_mode)
+        if (level_number == vpoc_price_level_number)
+            (3 * recent_label_offset)
+        else if (level_number == support_price_level_number)
+            (2 * recent_label_offset)
+        else if (level_number == current_price_level_number)
+            (1 * recent_label_offset)
+        else if (level_number == resistance_price_level_number)
+            (0 * recent_label_offset)
+        else
+            (0 * recent_label_offset)
+    else
+        0
+
+get_level_special_price(level_number, recent_lvl_height, recent_low) =>
+    level_special_price_number = 0
+    if (level_number == vpoc_price_level_number)
+        level_special_price_number := int(floor((VP_PRICE_LEVELS - 1)/2/2)) // 1/2 of middle
+    else if (level_number == current_price_level_number)
+        level_special_price_number := int(floor((VP_PRICE_LEVELS - 1)/2)) // Middle
+    else if (level_number == support_price_level_number)
+        level_special_price_number := 0
+    else if (level_number == resistance_price_level_number)
+        level_special_price_number := (VP_PRICE_LEVELS - 1)
+    else
+        level_special_price_number := 0
+    
+    level_price_wrapper(recent_lvl_height, recent_low, level_special_price_number)
+
+draw_recent_lvl_line(highest_recent_lvl_width, recent_lvl_price, recent_lvl_width, level_number) =>
+    dt = time - time[1]
+    var line recent_lvl_line = na
+    float profile_lvl_width_float = recent_lvl_width
+    float highest_profile_lvl_width_float = highest_recent_lvl_width
+    float width_proportion = (profile_lvl_width_float/highest_profile_lvl_width_float)
+
+    if barstate.islast and enable_recent_profile
+        level_colour = get_level_colour(level_number)
+        recent_lvl_line := line.new(bar_index, close, bar_index, close, width=recent_line_witdh, xloc = xloc.bar_time, color=level_colour)
+        line.set_x1(recent_lvl_line, floor(time + dt + recent_profile_offset*dt + recent_profile_width*dt - ((width_proportion)*(recent_profile_width*dt))) )
+        line.set_x2(recent_lvl_line, floor(time + dt + recent_profile_offset*dt + recent_profile_width*dt))
+        line.set_y1(recent_lvl_line, recent_lvl_price)
+        line.set_y2(recent_lvl_line, recent_lvl_price)
+    if barstate.islast and not enable_recent_profile
+        if not na(recent_lvl_line)
+            line.delete(recent_lvl_line)
+            recent_lvl_line := na
+    recent_lvl_line
+
+draw_label(highest_recent_lvl_width, recent_lvl_price, level_number, recent_lvl_height, recent_low, price_tick_difference, recent_current_price) =>
+    dt = time - time[1]
+    var label recent_lvl_label = na
+    var float level_special_price = na
+    if barstate.islast and enable_recent_profile
+        level_colour = get_level_colour(level_number)
+        price_tick_difference_str = ""
+        if (enable_show_ticks and (syminfo.mintick > 0))
+            price_tick_difference_str :=  " ; " + tostring(price_tick_difference, "#") + " t" + " ; " + tostring(((recent_lvl_price - recent_current_price) * syminfo.pointvalue), "#." + get_resistances_price_decimal_digits_zero_string()) + " $" 
+        else 
+            price_tick_difference_str := ""
+        var string price_string = tostring(recent_lvl_price, "#." + get_resistances_price_decimal_digits_zero_string()) + price_tick_difference_str
+        if enable_avoid_overlap_mode
+            level_special_price := get_level_special_price(level_number, recent_lvl_height, recent_low)
+        else
+            level_special_price := recent_lvl_price
+        recent_lvl_label := label.new(bar_index, close, xloc = xloc.bar_time, color=level_colour, text=price_string, tooltip=get_level_tooltip(level_number) + " (" + price_string + ")", style=label.style_label_left, size=recent_label_size)
+        offset_between_labels = get_level_label_offset(level_number)
+        label.set_x(recent_lvl_label, floor(time + dt + recent_profile_offset*dt + recent_profile_width*dt + offset_between_labels * dt))
+        label.set_y(recent_lvl_label, level_special_price)
+    if barstate.islast and not enable_recent_profile
+        if not na(recent_lvl_label)
+            label.delete(recent_lvl_label)
+            recent_lvl_label := na
+    recent_lvl_label
+
+get_tick_difference (recent_support_price, recent_current_price) =>
+    price_difference = recent_support_price - recent_current_price
+    tick_based_price_difference = 0.0
+    if (enable_show_ticks and (syminfo.mintick > 0))
+        tick_based_price_difference :=  floor((recent_support_price - recent_current_price) / syminfo.mintick)
+    else 
+        tick_based_price_difference := price_difference
+    tick_based_price_difference
+
+
+
+
+////
+// Calculate recent profile
+///
+
+float recent_high = na
+float recent_low = na
+float recent_highest_lvl_value = na
+float highest_recent_lvl_width = na
+float highest_recent_lvl_value = na
+
+
+float recent_lvl_price_tmp = na
+float previous_recent_lvl_value_tmp = na
+float recent_lvl_width_tmp = na
+float recent_lvl_value_tmp = na
+
+var line recent_lvl0_line = na
+var line recent_lvl1_line = na
+var line recent_lvl2_line = na
+var line recent_lvl3_line = na
+var line recent_lvl4_line = na
+var line recent_lvl5_line = na
+var line recent_lvl6_line = na
+var line recent_lvl7_line = na
+var line recent_lvl8_line = na
+var line recent_lvl9_line = na
+var line recent_lvl10_line = na
+var line recent_lvl11_line = na
+var line recent_lvl12_line = na
+var line recent_lvl13_line = na
+var line recent_lvl14_line = na
+var line recent_lvl15_line = na
+var line recent_lvl16_line = na
+var line recent_lvl17_line = na
+var line recent_lvl18_line = na
+var line recent_lvl19_line = na
+
+var label recent_current_price_label = na
+var label recent_support_price_label = na
+var label recent_resistance_price_label = na
+var label recent_vpoc_price_label = na
+
+
+if enable_recent_profile
+    recent_high := highest(high, recent_n_bars)
+    recent_low := lowest(low, recent_n_bars)
+    recent_lvl_height = (recent_high - recent_low) / VP_PRICE_LEVELS
+
+    if (barstate.islast)
+        
+        current_price = (open + close) / 2
+
+        // Value
+        for level_number = 0 to (VP_PRICE_LEVELS - 1)
+            recent_lvl_value_tmp := level_value_wrapper(recent_lvl_height, recent_low, level_number, 0, recent_n_bars)
+            recent_highest_lvl_value := max(nz(recent_highest_lvl_value), recent_lvl_value_tmp)
+            if nz(highest_recent_lvl_value) < recent_highest_lvl_value
+                highest_recent_lvl_value := recent_highest_lvl_value
+                vpoc_price_level_number := level_number
+                
+
+        // Width
+        for level_number = 0 to (VP_PRICE_LEVELS - 1)
+            recent_lvl_width_tmp := level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, level_number)
+            if nz(highest_recent_lvl_width) < recent_lvl_width_tmp
+                highest_recent_lvl_width := recent_lvl_width_tmp
+
+        // Price - Price level
+        current_price_level_number := na
+        for level_number = (VP_PRICE_LEVELS - 1) to 0
+            recent_lvl_price_tmp := level_price_wrapper(recent_lvl_height, recent_low, level_number)
+            if (recent_lvl_price_tmp < current_price)
+                current_price_level_number := level_number
+                break
+        if na(current_price_level_number) // Nothing found on levels
+            current_price_level_number := 0
+
+        // Price - Support level
+        previous_recent_lvl_value_tmp := 0
+        for level_number = current_price_level_number to 0
+            recent_lvl_value_tmp := level_value_wrapper(recent_lvl_height, recent_low, level_number, 0, recent_n_bars)
+            if ( (not (previous_recent_lvl_value_tmp == 0)) and (recent_lvl_value_tmp > previous_recent_lvl_value_tmp) )
+                support_price_level_number := level_number
+                break
+            previous_recent_lvl_value_tmp := recent_lvl_value_tmp
+        if na(support_price_level_number) // Nothing found on levels
+            support_price_level_number := 0
+
+        // Price - Resistance level
+        previous_recent_lvl_value_tmp := 0
+        for level_number = current_price_level_number to (VP_PRICE_LEVELS - 1)
+            recent_lvl_value_tmp := level_value_wrapper(recent_lvl_height, recent_low, level_number, 0, recent_n_bars)
+            if ( (not (previous_recent_lvl_value_tmp == 0)) and (recent_lvl_value_tmp > previous_recent_lvl_value_tmp) )
+                resistance_price_level_number := level_number
+                break
+            previous_recent_lvl_value_tmp := recent_lvl_value_tmp
+        if na(resistance_price_level_number) // Nothing found on levels
+            resistance_price_level_number := (VP_PRICE_LEVELS - 1)
+
+    ////
+    // Draw recent block
+    ///
+    if (barstate.islast)
+        
+        line.delete(recent_lvl0_line)
+        line.delete(recent_lvl1_line)
+        line.delete(recent_lvl2_line)
+        line.delete(recent_lvl3_line)
+        line.delete(recent_lvl4_line)
+        line.delete(recent_lvl5_line)
+        line.delete(recent_lvl6_line)
+        line.delete(recent_lvl7_line)
+        line.delete(recent_lvl8_line)
+        line.delete(recent_lvl9_line)
+        line.delete(recent_lvl10_line)
+        line.delete(recent_lvl11_line)
+        line.delete(recent_lvl12_line)
+        line.delete(recent_lvl13_line)
+        line.delete(recent_lvl14_line)
+        line.delete(recent_lvl15_line)
+        line.delete(recent_lvl16_line)
+        line.delete(recent_lvl17_line)
+        line.delete(recent_lvl18_line)
+        line.delete(recent_lvl19_line)
+        
+
+        label.delete(recent_current_price_label)
+        label.delete(recent_support_price_label)
+        label.delete(recent_resistance_price_label)
+        label.delete(recent_vpoc_price_label)
+
+        recent_lvl0_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 0)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 0)), 0)
+        recent_lvl1_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 1)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 1)), 1)
+        recent_lvl2_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 2)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 2)), 2)
+        recent_lvl3_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 3)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 3)), 3)
+        recent_lvl4_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 4)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 4)), 4)
+        recent_lvl5_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 5)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 5)), 5)
+        recent_lvl6_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 6)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 6)), 6)
+        recent_lvl7_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 7)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 7)), 7)
+        recent_lvl8_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 8)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 8)), 8)
+        recent_lvl9_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 9)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 9)), 9)
+        recent_lvl10_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 10)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 10)), 10)
+        recent_lvl11_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 11)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 11)), 11)
+        recent_lvl12_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 12)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 12)), 12)
+        recent_lvl13_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 13)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 13)), 13)
+        recent_lvl14_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 14)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 14)), 14)
+        recent_lvl15_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 15)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 15)), 15)
+        recent_lvl16_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 16)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 16)), 16)
+        recent_lvl17_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 17)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 17)), 17)
+        recent_lvl18_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 18)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 18)), 18)
+        recent_lvl19_line := draw_recent_lvl_line(highest_recent_lvl_width, (level_price_wrapper(recent_lvl_height, recent_low, 19)), (level_width(recent_highest_lvl_value, recent_lvl_height, recent_low, 19)), 19)
+        
+        recent_current_price = (level_price_wrapper(recent_lvl_height, recent_low, current_price_level_number))
+        recent_support_price = (level_price_wrapper(recent_lvl_height, recent_low, support_price_level_number))
+        recent_resistance_price = (level_price_wrapper(recent_lvl_height, recent_low, resistance_price_level_number))
+        recent_vpoc_price = (level_price_wrapper(recent_lvl_height, recent_low, vpoc_price_level_number))
+        
+        recent_current_price_tick_difference = 0.0
+        recent_support_price_tick_difference = get_tick_difference (recent_support_price, recent_current_price)
+        recent_resistance_price_tick_difference = get_tick_difference (recent_resistance_price, recent_current_price)
+        recent_vpoc_price_tick_difference = get_tick_difference (recent_vpoc_price, recent_current_price)
+        
+        recent_current_price_label := draw_label(highest_recent_lvl_width, recent_current_price, current_price_level_number, recent_lvl_height, recent_low, recent_current_price_tick_difference, recent_current_price)
+        recent_support_price_label := draw_label(highest_recent_lvl_width, recent_support_price, support_price_level_number, recent_lvl_height, recent_low, recent_support_price_tick_difference, recent_current_price)
+        recent_resistance_price_label := draw_label(highest_recent_lvl_width, recent_resistance_price, resistance_price_level_number, recent_lvl_height, recent_low, recent_resistance_price_tick_difference, recent_current_price)
+        recent_vpoc_price_label := draw_label(highest_recent_lvl_width, recent_vpoc_price, vpoc_price_level_number, recent_lvl_height, recent_low, recent_vpoc_price_tick_difference, recent_current_price)
+
