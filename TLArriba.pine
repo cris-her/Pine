@@ -1,6 +1,7 @@
 //@version=4
 study(title="TradingLatino Arriba 2020 05", shorttitle="TLArriba", overlay=true)
 
+// https://www.tradingview.com/script/dy9yiWYh/
 // Tradingview Public description - BEGIN
 //
 // Este script está dirigido al público de TradingLatino que sigue sus streams.
