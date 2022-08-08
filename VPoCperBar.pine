@@ -1,1 +1,330 @@
-//https://ruckard.github.io/zignaly-signal-wizard/
+//@version=4
+// https://www.tradingview.com/script/vjnrjTqi-VPoC-per-bar/
+
+
+study("VPoC per Bar A054", shorttitle="A054VPoCBar", overlay=true, max_bars_back=5000)
+
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+
+// Current version: v20201024 ( A054 )
+
+// TradingView Public tags - BEGIN
+// Tag 1: VPOC
+//
+// TradingView Public tags - END
+
+// Tradingview Public description - BEGIN
+// 
+// This study prints the current bar VPoC as an horizontal line.
+// 
+// 
+// It's aimed originally at BTCUSDT pair and 15m timeframe.
+//
+//
+// 
+// 
+// [B]HOW IT WORKS[/B]
+// Zoom In mode: This is the default mode.
+// The study zooms in into the latest 15 1-minute bar candles in order to calculate the 15 minute candle VPoC.
+// Zoom Out mode: The VPoC from the last n bars from the current timeframe that match desired timeframe is shown on each bar.
+//
+// In either case you are recommended to click on the '...' button associated to this study
+// and select 'Visual Order. Bring to Front.' so that it's properly shown in your chart.
+//
+// [B]HOW IT WORKS - Zoom In mode[/B]
+// [list]
+// [*] Make sure that '(VP) Zoom into the VP timeframe' setting is set to true.
+// [*] Choose the zoomed in timeframe where to calculate VPoC from thanks to the '(VP) Zoomed timeframe {1 minute}' setting.
+// [*] Change '(VP) Zoomed in timeframe bars per current timeframe bar {15}' to its appropiated value. You just need to divide the current timeframe minutes per the zoomed in timeframe minutes per bar. E.g. If you are in 60 minute timeframe and you want to zoom in into 5 minute timeframe: 60 / 5 = 12 . You will write 12 here.
+// [/list]
+//
+// [B]HOW IT WORKS - Zoom Out mode[/B]
+// [list]
+// [*] Make sure that '(VP) Zoom into the VP timeframe' setting is set to false.
+// [*] If you are using the Zoom out mode you might want to set '(VP) Print VPoC price as discrete lines {True}' to false.
+// [*] Either choose the zoommed out timeframe where to calculate VPoC from thanks to the '(VP) Zoomed timeframe {1 minute}' setting or turn on the '(VP) Use number of bars (not VP timeframe)' setting in order to use '(VP) Number of bars {100}' as a custom number of bars.
+// [/list]
+//
+// [B]WARNING - Zoom In mode last bar[/B]
+// The way that PineScript handles security function in last bar might result on the last bar not being accurate enough.
+// [B]SETTINGS[/B]
+// 
+// [B]__ SETTINGS - Volume Profile[/B]
+// 
+// [list]
+// [*] (VP) Zoomed timeframe {1 minute}: Timeframe in which to zoom in or zoom out to calculate an accurate VPoC for the current timeframe.
+// [*] (VP) Zoomed in timeframe bars per current timeframe bar {15}: Check 'HOW IT WORKS - Zoom In mode' above. [b]Note[/b]: It is only used in 'Zoom in' mode.
+// [*] (VP) Number of bars {100}: If 'Use number of bars (not VP timeframe)' is turned on this setting is used to calculate session VPoC. [b]Note[/b]: It is only used in 'Zoom out' mode.
+// [*] (VP) Price levels {24}: Price levels for calculating VPoC.
+// [/list]
+// 
+// [B]__ SETTINGS - MAIN TURN ON/OFF OPTIONS[/B]
+// [list]
+// [*] (VP) Print VPoC price {True}: Show VPoC price
+// [*] (VP) Zoom into the VP timeframe: When set to true the VPoC is calculated by zooming into the lower timeframe. When set to false a higher timeframe (or number of bars) is used.
+// [*] (VP) Realtime Zoom in (Beta): Enable real time zoom for the last bar. It's beta because it would only work with zoomed in timeframe under 60 minutes. And when ratio between zoomout and zoomin is less than 60. [b]Note[/b]: It is only used in 'Zoom in' mode.
+// [*] (VP) Use number of bars (not VP timeframe): Uses 'Number of bars {100}' setting instead of 'Volume Profile timeframe' setting for calculating session VPoC. [b]Note[/b]: It is only used in 'Zoom out' mode.
+// [*] (VP) Print VPoC price as discrete lines {True}: When set to true the VPoC is shown as an small line in the center of each bar. When set to the false the VPoC line is printed as a normal line.
+// [/list]
+//
+// [B]__ SETTINGS - EXTRA[/B]
+// [list]
+// [*] (VP) VPoC color: Change the VPoC color
+// [*] (VP) VPoC line width {1}: Change VPoC line width (in pixels).
+// [*] (VP) Use number of bars (not VP timeframe): Uses 'Number of bars {100}' setting instead of 'Volume Profile timeframe' setting for calculating session VPoC. [b]Note[/b]: It is only used in 'Zoom out' mode.
+// [*] (VP) Print VPoC price as discrete lines {True}: When set to true the VPoC is shown as an small line in the center of each bar. When set to the false the VPoC line is printed as a normal line.
+// [/list]
+// 
+//
+// [b]CREDITS[/b]
+// 
+// I have reused and adapted some code from
+// "Poor man's volume profile" study
+// which it's from TradingView IldarAkhmetgaleev user.
+// 
+//
+// Tradingview Public description - END
+
+// CREDITS - BEGIN
+// Volume based resistances and supports
+// Name: Poor man's volume profile
+// User: IldarAkhmetgaleev
+// https://www.tradingview.com/script/IWdpl712-Poor-man-s-volume-profile/
+
+// CREDITS - END
+
+hc = max(close, open)
+lc = min(close, open)
+
+// Volume Profile inputs
+
+// vp_resistances_price_decimal_digits = input(2, "(VP) Resistances prices number of decimal digits {2}", minval=0, maxval=10, step=1)
+// Decimal - Inputs
+// contract_maximum_decimal_number = input(3, title="(DECIMAL) Maximum number of decimal for contracts {3}",minval=0)
+
+// VOLUME PROFILE indicator - Inputs
+vp_timeframe = input("1",title="(VP) Zoomed timeframe {1 minute}",type=input.resolution)
+zoomin_vp_vpvr_vpoc_n_bars = input(15, "(VP) Zoomed in timeframe bars per current timeframe bar {15}", minval=1, maxval=500)
+vp_custom_vpvr_n_bars = input(100, "(VP) Number of bars {100}", minval=1, maxval=500)
+VP_PRICE_LEVELS = input(24, "(VP) Price levels {24}", minval=10, maxval=500)
+
+
+
+// VOLUME PROFILE indicator - On/Off
+vp_enable_print_vpvr_vpoc_price = input(true, title="(VP) Print VPoC price {True}", type=input.bool)
+zoomin = input(true, "(VP) Zoom into the VP timeframe")
+realtimezoomin = input(true, "(VP) Realtime Zoom in (Beta)")
+vp_enable_custom_recent_n_bars = input(false, "(VP) Use number of bars (not VP timeframe)")
+vpoc_enable_print_as_discrete_lines = input(true, "(VP) Print VPoC price as discrete lines {True}")
+
+// EXTRA
+color VP_VPOC_PRICE_LEVEL_COLOR = input(color.white, "(VP) VPoC color", type = input.color)
+
+vpoc_line_width = input(1, "(VP) VPoC line width {1}", minval=1, maxval=50, step=1)
+
+// Decimals - Functions
+get_contract_multiplier(contract_maximum_decimal_number) =>
+    contract_multiplier = 1
+    if (contract_maximum_decimal_number == 0)
+        contract_multiplier // Return 1
+    else
+        for counter = 1 to contract_maximum_decimal_number
+            contract_multiplier:= contract_multiplier * 10
+        contract_multiplier
+
+
+// —————————— PineCoders MTF Selection Framework functions
+// ————— Converts current "timeframe.multiplier" plus the TF into minutes of type float.
+f_resInMinutes() => 
+    _resInMinutes = timeframe.multiplier * (
+      timeframe.isseconds ? 1. / 60. :
+      timeframe.isminutes ? 1.       :
+      timeframe.isdaily   ? 1440.    :
+      timeframe.isweekly  ? 10080.   :
+      timeframe.ismonthly ? 43800.   : na)
+
+get_resolution_bar_minutes(resolution) =>
+    minutes = resolution == '1' ? (1 * 1) : 
+     resolution == '3' ? (3 * 1) :
+     resolution == '5' ? (5 * 1) : 
+     resolution == '15' ? (15 * 1) : 
+     resolution == '30' ? (30 * 1) : 
+     resolution == '45' ? (45 * 1) : 
+     resolution == '60' ? (60 * 1) : 
+     resolution == '120' ? (2 * 60) : 
+     resolution == '180' ? (3 * 60) : 
+     resolution == '240' ? (4 * 60) : 
+     resolution == '1D' ? (24 * 60) :
+     resolution == '1W' ? (7 * 24 * 60) :
+     resolution == '1M' ? (4 * 7 * 24 * 60) :
+     f_resInMinutes() // Equal to current symbol
+    minutes
+
+// Zoom handling
+
+int vp_recent_n_bars_based_on_resolution = na
+if (zoomin)
+    vp_recent_n_bars_based_on_resolution := int(floor(f_resInMinutes() / get_resolution_bar_minutes(vp_timeframe)))
+else
+    vp_recent_n_bars_based_on_resolution := int(floor(get_resolution_bar_minutes(vp_timeframe) / f_resInMinutes()))
+
+int vp_vpvr_vpoc_n_bars = na
+if vp_enable_custom_recent_n_bars
+    vp_vpvr_vpoc_n_bars := vp_custom_vpvr_n_bars
+else
+    vp_vpvr_vpoc_n_bars := vp_recent_n_bars_based_on_resolution
+
+
+
+// Volume Profile functions
+
+vp_level_value(from_i, to_i, row_low, row_high) =>
+    float actual_low = na
+    float actual_high = na
+    val = 0.0
+    for i = from_i to to_i
+        if low[i] < row_high and high[i] > row_low
+            if low[i] > row_low
+                actual_low := low[i]
+            else
+                actual_low := row_low // Should not happen
+
+            if high[i] < row_high
+                actual_high := high[i]
+            else
+                actual_high := row_high
+
+            val := val + volume[i] * (max(actual_high - actual_low, 1) / max((row_high - row_low) * VP_PRICE_LEVELS, 1) )
+    val
+
+vp_level_price(from_i, to_i, row_low, row_high) =>
+    float actual_low = na
+    float actual_high = na
+    float volume_ponderated = 0.0
+    float price_ponderated = 0.0
+    float total_volume = 0.0
+    float price_ponderated_top_sum = 0.0
+    float return_price = 0.0
+
+    for i = from_i to to_i
+        actual_high := row_high // Default value for the loop
+        actual_low := row_low // Default values for the loop
+        volume_ponderated := 0.0 // Default value for the loop
+        if low[i] < row_high and high[i] > row_low
+            if low[i] > row_low
+                actual_low := low[i]
+            else
+                actual_low := row_low // Should not happen
+
+            if high[i] < row_high
+                actual_high := high[i]
+            else
+                actual_high := row_high
+
+            volume_ponderated := volume[i] * (max(actual_high - actual_low, 1) / max((row_high - row_low) * VP_PRICE_LEVELS, 1))
+
+            total_volume := total_volume + volume_ponderated
+            price_ponderated := ((actual_high + actual_low) / 2)
+            price_ponderated_top_sum := price_ponderated_top_sum + (price_ponderated * volume_ponderated)
+            
+    if (total_volume != 0)
+        return_price := price_ponderated_top_sum / total_volume
+    else
+        return_price := ((row_low + row_high ) / 2)
+
+    return_price
+
+vp_level_value_wrapper(vp_recent_lvl_height, vp_recent_low, vp_level_number, from_i, to_i) =>
+    recent_lvl_low = vp_recent_low + vp_recent_lvl_height * (0 + vp_level_number)
+    recent_lvl_high = vp_recent_low + vp_recent_lvl_height * (1 + vp_level_number)
+    recent_lvl_value = vp_level_value(0, to_i, recent_lvl_low, recent_lvl_high)
+    recent_lvl_value
+
+vp_level_price_wrapper(vp_recent_lvl_height, vp_recent_low, vp_level_number, vp_n_bars) =>
+    recent_lvl_low = vp_recent_low + vp_recent_lvl_height * (0 + vp_level_number)
+    recent_lvl_high = vp_recent_low + vp_recent_lvl_height * (1 + vp_level_number)
+    
+    recent_lvl_price = vp_level_price(0, vp_n_bars, recent_lvl_low, recent_lvl_high)
+    tick_based_lvl_price = 0.0
+    tick_based_lvl_price := recent_lvl_price
+
+    tick_based_lvl_price
+
+// VPVR VPoC - Value
+
+// VPVR VPoC - Price
+
+get_vpoc_price (vp_vpvr_vpoc_n_bars, VP_PRICE_LEVELS, realtimezoomin) =>
+    float vp_vpvr_recent_high = na
+    float vp_vpvr_recent_low = na
+    float vp_vpvr_recent_highest_lvl_value = na
+    float vp_vpvr_highest_recent_lvl_value = na
+    float vp_recent_lvl_value_tmp = na
+    int vp_vpvr_vpoc_price_level_number = na
+
+
+    int lvp_vpvr_vpoc_n_bars = na
+    // Workaround to only work with current data when in realtime
+    if (realtimezoomin)
+        bars_mod = (minute + 1) % vp_vpvr_vpoc_n_bars
+        if (bars_mod == 0)
+            lvp_vpvr_vpoc_n_bars := vp_vpvr_vpoc_n_bars
+        else
+            lvp_vpvr_vpoc_n_bars := bars_mod
+    else
+        lvp_vpvr_vpoc_n_bars := vp_vpvr_vpoc_n_bars
+
+
+    vp_vpvr_recent_high := highest(high, lvp_vpvr_vpoc_n_bars)
+    vp_vpvr_recent_low := lowest(low, lvp_vpvr_vpoc_n_bars)
+    vp_vpvr_recent_lvl_height = (vp_vpvr_recent_high - vp_vpvr_recent_low) / VP_PRICE_LEVELS
+
+    for vp_level_number = 0 to (VP_PRICE_LEVELS - 1)
+        vp_recent_lvl_value_tmp := vp_level_value_wrapper(vp_vpvr_recent_lvl_height, vp_vpvr_recent_low, vp_level_number, 0, lvp_vpvr_vpoc_n_bars)
+        vp_vpvr_recent_highest_lvl_value := max(nz(vp_vpvr_recent_highest_lvl_value), vp_recent_lvl_value_tmp)
+        if nz(vp_vpvr_highest_recent_lvl_value) < vp_vpvr_recent_highest_lvl_value
+            vp_vpvr_highest_recent_lvl_value := vp_vpvr_recent_highest_lvl_value
+            vp_vpvr_vpoc_price_level_number := vp_level_number
+    vp_recent_vpvr_vpoc_price = (vp_level_price_wrapper(vp_vpvr_recent_lvl_height, vp_vpvr_recent_low, vp_vpvr_vpoc_price_level_number, lvp_vpvr_vpoc_n_bars))
+    vp_recent_vpvr_vpoc_price
+
+get_vpoc_price_wrapper (vp_vpvr_vpoc_n_bars, VP_PRICE_LEVELS, to_run, realtimezoomin) =>
+    float returned_vpoc = na
+    if (to_run)
+        returned_vpoc := get_vpoc_price (vp_vpvr_vpoc_n_bars, VP_PRICE_LEVELS, realtimezoomin)
+    else
+        returned_vpoc := na
+    returned_vpoc
+
+// Let's calculate always the security because PineScript enforces it
+vp_recent_vpvr_vpoc_price_zoomin = security(syminfo.tickerid, vp_timeframe, get_vpoc_price_wrapper (zoomin_vp_vpvr_vpoc_n_bars, VP_PRICE_LEVELS, zoomin, realtimezoomin))
+
+
+float vp_recent_vpvr_vpoc_price = na
+
+if (zoomin)
+    vp_recent_vpvr_vpoc_price := vp_recent_vpvr_vpoc_price_zoomin
+else
+    vp_recent_vpvr_vpoc_price := get_vpoc_price (vp_vpvr_vpoc_n_bars, VP_PRICE_LEVELS, false)
+
+// VPVR VPoC - Print
+float vp_recent_vpvr_vpoc_price_print = na
+if vp_enable_print_vpvr_vpoc_price
+    vp_recent_vpvr_vpoc_price_print := vp_recent_vpvr_vpoc_price
+else
+    vp_recent_vpvr_vpoc_price_print := na
+
+float vp_recent_vpvr_vpoc_price_print_discrete = na
+float vp_recent_vpvr_vpoc_price_print_continous = na
+if (vpoc_enable_print_as_discrete_lines)
+    vp_recent_vpvr_vpoc_price_print_discrete := vp_recent_vpvr_vpoc_price_print
+    vp_recent_vpvr_vpoc_price_print_continous := na
+else
+    vp_recent_vpvr_vpoc_price_print_continous := vp_recent_vpvr_vpoc_price_print
+    vp_recent_vpvr_vpoc_price_print_discrete := na
+
+
+plot(bar_index % 2 == 0 ? vp_recent_vpvr_vpoc_price_print_discrete : na, "VPoC Disc0", VP_VPOC_PRICE_LEVEL_COLOR, vpoc_line_width, plot.style_linebr)
+plot(bar_index % 2 == 1 ? vp_recent_vpvr_vpoc_price_print_discrete : na, "VPoC Disc1", VP_VPOC_PRICE_LEVEL_COLOR, vpoc_line_width, plot.style_linebr)
+
+plot(vp_recent_vpvr_vpoc_price_print_continous, "VPoC", VP_VPOC_PRICE_LEVEL_COLOR, vpoc_line_width, plot.style_line)
