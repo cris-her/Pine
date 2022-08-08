@@ -1,0 +1,58 @@
+//@version=4
+study(title="TradingLatino Arriba 2020 05", shorttitle="TLArriba", overlay=true)
+
+// Tradingview Public description - BEGIN
+//
+// Este script está dirigido al público de TradingLatino que sigue sus streams.
+// Actualizado para su configuración de mayo de 2020.
+// 
+// Los mercados dónde se recomienda usarlo son relacionados con las criptomonedas, como, por ejemplo:
+// BTCUSDT en un gráfico de 4h .
+// 
+// [B] CÓMO FUNCIONA [/B]
+// Permite configurar el gráfico principal como el streamer lo tiene configurado.
+// Con un solo indicador podremos disfrutar de:
+// * EMA 10 (conocida como Media Movil Azul en el stream)
+// * EMA 55 (conocida como Media Movil Marron en el stream)
+// 
+// 
+// [B] NOTA SOBRE COLORES[/B]
+// Nota: Jaime usa el color marrón para la MediaMovilMarron. El color marrón por defecto de TradingView en una paleta de colores claros (modo día) no me convencía. Así pues se optó por un color marrón personalizado. Si se cambia el modo de TradingView a colores oscuros (modo noche) es posible que se quiera cambiar el color de "MediaMovilMarron" a algún marrón menos rojizo en la configuración.
+// 
+// [B]VENTAJAS[/B]
+// [LIST]
+// [*] Para que la gente que usa la versión gratuita de Tradingview este script permite ahorrar un indicador y, por tanto, te permite añadir más indicadores.
+// [*] Se configura directamente en el gráfico principal. No hay necesidad de arrastrarlo.
+// [/LIST]
+// 
+// [B]ADVERTENCIA[/B]
+// Nota: Jaime también usa los indicadores VPSV y VPVR. Estos solo estan disponible en la version de pago. Aparentemente se pueden conseguir de forma gratuita bien sea en Tensorcharts, bien sea en Gocharting pero no sé más del tema. Lo que quiero decir es que normal que aún añadiendo este indicador falten cosas comparado con el stream de Jaime si resulta que no tienes acceso a alguna de las versiones PRO y no te has configurado estos indicadores extra.
+// 
+// [B]FEEDBACK[/B]
+// Para más información consultese el código fuente.
+// 
+// Se agradece feedback mediante chat privado.
+// 
+// [B]Bibliografia[/B]
+// * Canal de Youtube: www DOT youtube DOT com/channel/UCLjSq1FapG5OgvHsDKinHdA
+// * Video explicativo ABC Bitcoin de cómo configurar indicadores de TradingLatino: www DOT youtube DOT com/watch?v=1AulOUFERNA
+// Tradingview Public description - END
+
+marron_color=#800000
+
+ema10_len = input(10, minval=1, title="EMA10 - Longitud")
+ema10_src = input(close, title="Fuente")
+ema55_len = input(55, minval=1, title="EMA55 - Longitud")
+ema55_src = input(close, title="Fuente")
+
+
+fun_ema(ema10_len, ema10_src, ema55_len, ema55_src) =>
+    ema10_out = ema(ema10_src, ema10_len)
+    ema55_out = ema(ema55_src, ema55_len)
+    [ema10_out, ema55_out]
+
+[ema10, ema55] = fun_ema(ema10_len, ema10_src, ema55_len, ema55_src)
+
+
+plot(ema10, color=color.blue, title="Media movil azul [10]")
+plot(ema55, color=marron_color, title="Media movil marrón [55]")
