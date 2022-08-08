@@ -1,0 +1,209 @@
+// https://www.tradingview.com/script/9gp0BRoM/
+
+//@version=4
+study("Range identifier by median", shorttitle="RIDMedian", overlay=true, max_bars_back=5000)
+
+// This source code is subject to the terms of the Mozilla Public License 2.0
+
+// Current version: v20200711 Beta 1
+
+// TradingView Public tags - BEGIN
+// Tag 1: Trend Analysis
+// Tag 2: Median
+// Tag 3: tradinglatino
+// Tag 4: range
+// TradingView Public tags - END
+
+// TradingView Public description - BEGIN
+//
+// This study tries to highlight ranges
+// as they are defined by
+// TradingLatino TradingView user
+// A range according to his definition would consist of
+// periods when the price does not move a lot. 
+//
+// Its default values are aimed at BTCUSDT pair and 4h timeframe.
+//
+// [b]HOW IT WORKS[/b]
+//
+// For each of the bars a '5' median is calculated based on the 'highest of open and close'
+// For each of the bars a '5' median is calculated based on the 'lowest of open and close'
+//
+// Thanks to the desviation setting both medians
+// have a tolerated maximum and a minimum
+
+// Condition 1:
+// The bar current 'highest of open and close'
+// needs to be between the respective tolerated
+// maximum and minimum
+
+// Condition 2:
+// The bar current 'lowest of open and close'
+// needs to be between the respective tolerated
+// maximum and minimum
+
+// If both conditions are met
+// then the bar is in a range
+
+//
+// [b]SETTINGS[/b]
+// Price range periods [5]: How many previous periods are used to calculate the medians
+//
+// Price range maximum desviation (%) [0.6] ( > 0 ): Maximum positive desviation for range detection
+// Price range minimum desviation (%) [0.6] ( > 0 ): Mininum negative desviation for range detection
+// Desviations should be both of them a positive number
+//
+//
+// [b]WARNING[/b]
+// Despite the name indicator does not identify the entire range.
+// It identifies when you realise you are inside a range.
+// E.g. If a range length is 8 periods length this range indicator
+// will highlight only the last 6 periods of the range.
+// 
+// [b]USAGE[/b]
+// If your strategy signals you an upwards trend
+// then you might use this range detector
+// to know when to exit your long position
+//
+// Why?
+//
+// Because most of the times
+// the price is found to be
+// in a range it goes down
+//
+// [b]FEEDBACK 1[/b]
+// I already have another script that tries to compute
+// ranges based on angles.
+//
+// However it felt too much over complex that is why
+// I decided to implement it with medians.
+// It should be easier to modify if
+// I want to desviation inputs to be calculated
+// automatically in the future.
+//
+// I'm interested on different approaches on how to detect ranges.
+//
+// [b]FEEDBACK 2[/b]
+// I have only used this identifier in BTCUSDT 4h timeframe.
+// Feel free to comment down below with your suggested settings
+// for your favourite pair and timeframe
+//
+// [b]PINE SCRIPT TRICK[/b]
+// This script simulates looping an string char by char
+// in pine script.
+//
+// TradingView Public description - END
+
+// CREDITS - BEGIN
+
+// N/A
+
+// CREDITS - END
+
+// Median - functions
+median(src, length) =>
+    percentile_nearest_rank(src, length, 50)
+
+fun_amount_within_limits(amount, maximum_amount, minimum_amount) =>
+    (amount > minimum_amount) and (amount < maximum_amount)
+
+fun_price_is_in_range(hc, lc, pricerange_maximum_desviation_percent, pricerange_minimum_desviation_percent, pricerange_range_periods_number) =>
+    is_in_range = true
+    hc_median = median (hc, pricerange_range_periods_number)
+    lc_median = median (lc, pricerange_range_periods_number)
+
+    hc_maximum = hc_median * ((100 + pricerange_maximum_desviation_percent) / 100)
+    hc_minimum = hc_median / ((100 + pricerange_maximum_desviation_percent) / 100)
+
+    lc_maximum = lc_median * ((100 + pricerange_maximum_desviation_percent) / 100)
+    lc_minimum = lc_median / ((100 + pricerange_maximum_desviation_percent) / 100)
+
+    hc_within_limits = fun_amount_within_limits(hc, hc_maximum, hc_minimum)
+    lc_within_limits = fun_amount_within_limits(lc, lc_maximum, lc_minimum)
+    
+    hc_within_limits and lc_within_limits
+
+
+// TradingLatino Price is in range - Inputs
+pricerange_periods_number = input(5, title="Price range periods [5]")
+pricerange_maximum_desviation_percent = input(0.6, title="Price range maximum desviation (%) [0.6] ( > 0 ) ")
+pricerange_minimum_desviation_percent = input(0.6, title="Price range minimum desviation (%) [0.6] ( > 0 ) ")
+pricerange_background_colour = color.yellow
+pricerange_text_colour = color.white
+
+// Price is in range
+
+hc = max(close, open)
+lc = min(close, open)
+
+price_is_in_range = fun_price_is_in_range(hc, lc, pricerange_maximum_desviation_percent, pricerange_minimum_desviation_percent, pricerange_periods_number)
+
+range_string_loop_by_char(global_char_number, reset) =>
+    range_string_length = 6 // 'RANGE-'
+    char_number = global_char_number
+    if reset
+        char_number := 1
+    else
+        char_number := char_number + 1
+    if (char_number == (range_string_length + 1))
+        char_number := 1
+
+    return_char = (char_number == 1) ? 'R' :
+         (char_number == 2) ? 'A' :
+         (char_number == 3) ? 'N' : 
+         (char_number == 4) ? 'G' : 
+         (char_number == 5) ? 'E' : 
+         (char_number == 6) ? '-' : 'Notreturned'
+    return_char
+
+range_string_loop_by_number(global_char_number, reset) =>
+    range_string_length = 6 // 'RANGE-'
+    char_number = global_char_number
+    if reset
+        char_number := 1
+    else
+        char_number := char_number + 1
+    if (char_number == (range_string_length + 1))
+        char_number := 1
+
+    return_char = (char_number == 1) ? 'R' :
+         (char_number == 2) ? 'A' :
+         (char_number == 3) ? 'N' : 
+         (char_number == 4) ? 'G' : 
+         (char_number == 5) ? 'E' : 
+         (char_number == 6) ? '-' : 'Notreturned'
+    char_number
+
+// Loop range string by char preparation - BEGIN
+var range_char = 'S' // Random letter to initialize
+var range_char_number = 1
+if (price_is_in_range)
+    if (not (price_is_in_range[1]))
+        // RFE to TradingView: Please let me assign ( := ) a function array result to two variables
+        // as you already can with ( = ).
+        range_char := range_string_loop_by_char(range_char_number,true)
+        range_char_number := range_string_loop_by_number(range_char_number,true)
+    else
+        range_char := range_string_loop_by_char(range_char_number,false)
+        range_char_number := range_string_loop_by_number(range_char_number,false)
+
+price_is_in_range_R = ( price_is_in_range and (range_char=="R") )
+price_is_in_range_A = ( price_is_in_range and (range_char=="A") )
+price_is_in_range_N = ( price_is_in_range and (range_char=="N") )
+price_is_in_range_G = ( price_is_in_range and (range_char=="G") )
+price_is_in_range_E = ( price_is_in_range and (range_char=="E") )
+price_is_in_range__ = ( price_is_in_range and (range_char=="-") )
+
+// Loop range string by char preparation - END
+
+// Show Range - BEGIN
+
+plotshape(series=price_is_in_range_R, title="RangeTitleR", style=shape.square, color=pricerange_background_colour, transp=50, text="R", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+plotshape(series=price_is_in_range_A, title="RangeTitleA", style=shape.square, color=pricerange_background_colour, transp=50, text="A", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+plotshape(series=price_is_in_range_N, title="RangeTitleN", style=shape.square, color=pricerange_background_colour, transp=50, text="N", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+plotshape(series=price_is_in_range_G, title="RangeTitleG", style=shape.square, color=pricerange_background_colour, transp=50, text="G", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+plotshape(series=price_is_in_range_E, title="RangeTitleE", style=shape.square, color=pricerange_background_colour, transp=50, text="E", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+plotshape(series=price_is_in_range__, title="RangeTitle_", style=shape.square, color=pricerange_background_colour, transp=50, text="-", textcolor=pricerange_text_colour, editable=false, location=location.bottom)
+
+// Show Range - END
+
